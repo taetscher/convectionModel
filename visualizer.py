@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import imageio
-from convectionModel.physics import environmental, addContainer
+from convectionModel.physics import *
 
 
 # General Information:
@@ -15,37 +15,70 @@ from convectionModel.physics import environmental, addContainer
 resX = 100
 resY = resX
 dpi = 300
-timesteps = range(10)
+timesteps = 10
 
-
+# fill temperature and height of pre-filled liquid
+pre_fill = True
+fill_temp = 40
+filling_height = 0.75
 
 # set up list to convert output to gif
 out_rasters = []
-gif_duration = None
+gif_duration = 0.5 #second(s)
 
 
-for step in timesteps:
+#set up iteration
+iteration = 0
 
-    # set up raster of environmental noise
-    raster = environmental(resX,resY)
+while iteration < timesteps:
 
-    # add container
-    container = addContainer(raster)
-    print(container)
+    # set up raster of environmental air temperature
+    if pre_fill== True and iteration == 0:
+        raster = environmental(resX, resY)
+        # add container
+        container = addContainer(raster)
+
+        # pre-fill container
+        if pre_fill == True and iteration == 0:
+            temperature_raster = containerPreFill(container, raster, resX, resY, filling_height, fill_temp)
+        else:
+            pass
+
+    elif pre_fill == True and iteration >0:
+        #get materials from initial raster
+        materials = materials(temperature_raster, resX, resY, fill_temp)
+        print(materials)
+        #calculate temperature diffusion and updraft
+
+        # add container
+        container = addContainer(raster)
+
+
+
+
+
+        pass
+
+    else:
+        raster = environmental(resX, resY)
+        # add container
+        container = addContainer(raster)
+
 
     # make sure it can be exported
-    print("iteration number {}".format(step))
-    plt.imshow(raster, cmap='inferno')
+    print("iteration number {}".format(iteration))
+    plt.imshow(temperature_raster, cmap='inferno')
 
 
     #save image at step n
-    filepath = "output/visualizationTest{}.png".format(step)
+    filepath = "output/visualizationTest{}.png".format(iteration)
     plt.savefig(filepath, dpi=dpi)
 
     out_rasters.append(filepath)
 
+    iteration +=1
+
 # create gif from individual timesteps
-print(out_rasters)
 print("creating .gif...")
 
 images = []

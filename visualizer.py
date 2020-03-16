@@ -14,7 +14,7 @@ from convectionModel.physics import environmental, addContainer
 # raster size and timesteps
 resX = 100
 resY = resX
-dpi = 100
+dpi = 300
 timesteps = range(10)
 
 
@@ -26,16 +26,16 @@ gif_duration = None
 
 for step in timesteps:
 
-    # set up raster and physics calculation
+    # set up raster of environmental noise
     raster = environmental(resX,resY)
-    addContainer(raster)
 
-    #print(raster)
-
+    # add container
+    container = addContainer(raster)
+    print(container)
 
     # make sure it can be exported
     print("iteration number {}".format(step))
-    plt.imshow(raster)
+    plt.imshow(raster, cmap='inferno')
 
 
     #save image at step n

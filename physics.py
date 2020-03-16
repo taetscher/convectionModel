@@ -142,39 +142,43 @@ def diffusion(in_raster, resX, resY, diffusion_index, container_temp):
     neighbouring_cells = [(-1,-1),(0,-1),(1,-1),(-1,0),(1,0),(-1,1),(0,1),(1,1)]
     x = 0
     try:
-        while x < resX-1:
+        while x < resX:
 
             y = 0
 
-            while y < resY-1:
+            while y < resY:
 
                 pixel = in_raster[x,y]
-                #print("assessing pixel at ({},{})".format(x,y))
+
 
                 neighbour_values = []
 
                 for neighbour in neighbouring_cells:
                     neighbour_values.append(in_raster[neighbour])
+
                 #print("neigbour values: {}".format(neighbour_values))
 
-                if pixel < any(neighbour_values):
+                if pixel < max(neighbour_values):
                     highest = max(neighbour_values)
                     index = neighbour_values.index(highest)
                     diff = highest*diffusion_index
-                    temp_raster[x,y] += diff
+                    pixel += diff
                     donator = in_raster[x+(neighbouring_cells[index][0]), y+(neighbouring_cells[index][1])]
                     donator -= diff
+
 
                 elif pixel == all(neighbour_values):
                     pass
 
-                elif pixel > any(neighbour_values):
+                elif pixel > min(neighbour_values):
                     lowest = min(neighbour_values)
                     index = neighbour_values.index(lowest)
                     diff = pixel * diffusion_index
-                    benefactor = temp_raster[x + (neighbouring_cells[index][0]), y + (neighbouring_cells[index][1])]
+                    benefactor = in_raster[x + (neighbouring_cells[index][0]), y + (neighbouring_cells[index][1])]
                     benefactor += diff
-                    in_raster[x, y] = pixel - diff
+                    pixel -= diff
+                else:
+                    pass
 
                 y+=1
 
@@ -186,8 +190,7 @@ def diffusion(in_raster, resX, resY, diffusion_index, container_temp):
         print("ERROR: probably np array index out of bounds")
         pass
 
-    temp_raster += in_raster
-    return temp_raster
+    return in_raster
 
 def gravity():
     """introduces gravity for liquid in container"""

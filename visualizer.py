@@ -12,17 +12,17 @@ from convectionModel.physics import *
 
 
 # raster size and timesteps
-resX = 10
+resX = 200
 resY = resX
 dpi = 300
 timesteps = 5
-container_temp = 1
+container_temp = 'nan'
 
 # fill temperature and height of pre-filled liquid
 pre_fill = True
-fill_temp = 40
+fill_temp = 30
 filling_height = 0.75
-diffusion_index = 0.1
+diffusion_index = 0.5
 
 # set up list to convert output to gif
 out_rasters = []

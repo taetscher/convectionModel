@@ -12,15 +12,17 @@ from convectionModel.physics import *
 
 
 # raster size and timesteps
-resX = 100
+resX = 10
 resY = resX
 dpi = 300
-timesteps = 10
+timesteps = 5
+container_temp = 1
 
 # fill temperature and height of pre-filled liquid
 pre_fill = True
 fill_temp = 40
 filling_height = 0.75
+diffusion_index = 0.1
 
 # set up list to convert output to gif
 out_rasters = []
@@ -29,6 +31,8 @@ gif_duration = 0.5 #second(s)
 
 #set up iteration
 iteration = 0
+temperature_raster = np.zeros((resX,resY))
+
 
 while iteration < timesteps:
 
@@ -36,22 +40,21 @@ while iteration < timesteps:
     if pre_fill== True and iteration == 0:
         raster = environmental(resX, resY)
         # add container
-        container = addContainer(raster)
+        container = addContainer(raster, container_temp)
 
         # pre-fill container
-        if pre_fill == True and iteration == 0:
-            temperature_raster = containerPreFill(container, raster, resX, resY, filling_height, fill_temp)
-        else:
-            pass
+        temperature_raster = containerPreFill(container, raster, resX, resY, filling_height, fill_temp)
 
-    elif pre_fill == True and iteration >0:
+
+    elif pre_fill == True and iteration >=1:
         #get materials from initial raster
-        materials = materials(temperature_raster, resX, resY, fill_temp)
-        print(materials)
-        #calculate temperature diffusion and updraft
+        mats = materials(temperature_raster, resX, resY, fill_temp)
+        # calculate temperature diffusion and updraft
+        temperature_raster = diffusion(temperature_raster, resX, resY, diffusion_index, container_temp)
+
 
         # add container
-        container = addContainer(raster)
+        container = addContainer(temperature_raster, container_temp)
 
 
 
@@ -62,12 +65,17 @@ while iteration < timesteps:
     else:
         raster = environmental(resX, resY)
         # add container
-        container = addContainer(raster)
+        container = addContainer(raster, container_temp)
 
 
     # make sure it can be exported
     print("iteration number {}".format(iteration))
     plt.imshow(temperature_raster, cmap='inferno')
+    if iteration <=0:
+        plt.colorbar()
+    else:
+        pass
+
 
 
     #save image at step n
@@ -80,6 +88,7 @@ while iteration < timesteps:
 
 # create gif from individual timesteps
 print("creating .gif...")
+
 
 images = []
 

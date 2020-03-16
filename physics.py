@@ -17,13 +17,13 @@ def environmental(resX,resY):
 #---------------------------------------------------------
 #                       CONTAINER STUFF
 # set up container
-def addContainer(raster):
+def addContainer(raster, container_temp):
 
     '''Adds a container to the input raster layer where the container is centered, half as wide as the raster itself
     and half as high as the raster itself.'''
 
     #add container to raster
-    color_value=-10
+    color_value=container_temp
 
     #get dimensions from raster
     dimensions = raster.shape
@@ -103,7 +103,6 @@ def containerPreFill(container, raster, resX, resY, filling_height, fill_temp):
                 #only do this if the selected pixel is within the container
                 if x >= fill_bl[0] and x <= fill_br[0]:
                     if y >= resY*filling_height and y <= resY-2:
-                        print("now filling pixel at {},{}".format(x, y))
                         raster[y, x] = fill_temp
 
 
@@ -131,13 +130,64 @@ def containerFill(container, temperature=20):
 #---------------------------------------------------------
 #                       PHYSICS STUFF
 
-def updraftAndDiffusion():
+def diffusion(in_raster, resX, resY, diffusion_index, container_temp):
 
     """Calculates how much the liquid rises and diffuses energy
     because of its temperature.
 
     - based on input raster with temperatures """
-    pass
+
+    temp_raster = np.zeros((resX, resY))
+
+    neighbouring_cells = [(-1,-1),(0,-1),(1,-1),(-1,0),(1,0),(-1,1),(0,1),(1,1)]
+    x = 0
+    try:
+        while x < resX-1:
+
+            y = 0
+
+            while y < resY-1:
+
+                pixel = in_raster[x,y]
+                #print("assessing pixel at ({},{})".format(x,y))
+
+                neighbour_values = []
+
+                for neighbour in neighbouring_cells:
+                    neighbour_values.append(in_raster[neighbour])
+                #print("neigbour values: {}".format(neighbour_values))
+
+                if pixel < any(neighbour_values):
+                    highest = max(neighbour_values)
+                    index = neighbour_values.index(highest)
+                    diff = highest*diffusion_index
+                    temp_raster[x,y] += diff
+                    donator = in_raster[x+(neighbouring_cells[index][0]), y+(neighbouring_cells[index][1])]
+                    donator -= diff
+
+                elif pixel == all(neighbour_values):
+                    pass
+
+                elif pixel > any(neighbour_values):
+                    lowest = min(neighbour_values)
+                    index = neighbour_values.index(lowest)
+                    diff = pixel * diffusion_index
+                    benefactor = temp_raster[x + (neighbouring_cells[index][0]), y + (neighbouring_cells[index][1])]
+                    benefactor += diff
+                    in_raster[x, y] = pixel - diff
+
+                y+=1
+
+
+            x+=1
+
+
+    except:
+        print("ERROR: probably np array index out of bounds")
+        pass
+
+    temp_raster += in_raster
+    return temp_raster
 
 def gravity():
     """introduces gravity for liquid in container"""
@@ -158,36 +208,41 @@ def materials(in_raster, resX, resY, fill_temp):
 
 
     materials_raster = np.zeros((resX,resY))
-    print(materials_raster)
+
+    #iterate through input raster to get data on materials
     x=0
-    try:
-        while x <= resX:
 
-            y=0
+    while x <= resX-1:
 
-            while y <= resY:
+        y=0
 
-                pixel = in_raster[x,y]
+        while y <= resY-1:
 
-                if pixel == -10:
-                    materials_raster[x,y] = 2
+            pixel = in_raster[x,y]
 
-                elif pixel == fill_temp:
-                    materials_raster[x,y] = 3
-                else:
-                    pass
+            if pixel == -10:
+                materials_raster[x,y] = 2
+
+            elif pixel == fill_temp:
+                materials_raster[x,y] = 3
+            else:
+                pass
 
 
 
-                y += 1
+            y += 1
 
-            x += 1
-    except:
-        print("Tried to access pixel out of bounds!")
+        x += 1
+
+    return materials_raster
+
 
 #---------------------------------------------------------
 
 #---------------------------------------------------------
+
+
+
 
 #---------------------------------------------------------
 

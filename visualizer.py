@@ -12,11 +12,11 @@ from convectionModel.physics import *
 
 
 # raster size and timesteps
-resX = 200
+resX = 100
 resY = resX
 dpi = 300
-timesteps = 5
-container_temp = 'nan'
+timesteps = 10
+container_temp = -10
 
 # fill temperature and height of pre-filled liquid
 pre_fill = True
@@ -37,7 +37,7 @@ temperature_raster = np.zeros((resX,resY))
 while iteration < timesteps:
 
     # set up raster of environmental air temperature
-    if pre_fill== True and iteration == 0:
+    if iteration == 0:
         raster = environmental(resX, resY)
         # add container
         container = addContainer(raster, container_temp)
@@ -46,7 +46,7 @@ while iteration < timesteps:
         temperature_raster = containerPreFill(container, raster, resX, resY, filling_height, fill_temp)
 
 
-    elif pre_fill == True and iteration >=1:
+    else:
         #get materials from initial raster
         mats = materials(temperature_raster, resX, resY, fill_temp)
         # calculate temperature diffusion and updraft
@@ -58,14 +58,6 @@ while iteration < timesteps:
 
 
 
-
-
-        pass
-
-    else:
-        raster = environmental(resX, resY)
-        # add container
-        container = addContainer(raster, container_temp)
 
 
     # make sure it can be exported
@@ -80,6 +72,7 @@ while iteration < timesteps:
 
     #save image at step n
     filepath = "output/visualizationTest{}.png".format(iteration)
+    plt.title("Timestep {}".format(iteration+1))
     plt.savefig(filepath, dpi=dpi)
 
     out_rasters.append(filepath)

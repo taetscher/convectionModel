@@ -88,7 +88,6 @@ def containerPreFill(container, raster, resX, resY, filling_height, fill_temp):
     fill_tr = [(container['container_tr'][0])-1,(container['container_tr'][1])-1]
 
     fill = [fill_bl,fill_tl,fill_br,fill_tr]
-    print("filling coordinates: {}".format(fill))
 
     #fill container
     x =0
@@ -130,6 +129,7 @@ def containerFill(container, temperature=20):
 #---------------------------------------------------------
 #                       PHYSICS STUFF
 
+
 def diffusion(in_raster, resX, resY, diffusion_index, container_temp):
 
     """Calculates how much the liquid rises and diffuses energy
@@ -137,65 +137,146 @@ def diffusion(in_raster, resX, resY, diffusion_index, container_temp):
 
     - based on input raster with temperatures """
 
-    temp_raster = np.zeros((resX, resY))
+    temporary_raster = np.zeros(shape=(resX, resY), dtype=int)
+    edges = [[0, resY-1],[resX-1, 0],[0, resX-1],[resY-1, 0]]
+    for edge in edges:
+        np.put(temporary_raster,edge,20)
+        print(temporary_raster)
 
-    neighbouring_cells = [(-1,-1),(0,-1),(1,-1),(-1,0),(1,0),(-1,1),(0,1),(1,1)]
     x = 0
-    try:
-        while x < resX:
 
-            y = 0
+    while x < resX-1:
 
-            while y < resY:
+        y = 0
+        while y < resY-1:
 
-                pixel = in_raster[x,y]
+            temporary_raster = decider_diffusion(in_raster,temporary_raster,x,y, diffusion_index)
+            #print(decided)
 
-
-                neighbour_values = []
-
-                for neighbour in neighbouring_cells:
-                    neighbour_values.append(in_raster[neighbour])
-
-                #print("neigbour values: {}".format(neighbour_values))
-
-                if pixel < max(neighbour_values):
-                    highest = max(neighbour_values)
-                    index = neighbour_values.index(highest)
-                    diff = highest*diffusion_index
-                    pixel += diff
-                    donator = in_raster[x+(neighbouring_cells[index][0]), y+(neighbouring_cells[index][1])]
-                    donator -= diff
+            y+=1
+        x+=1
 
 
-                elif pixel == all(neighbour_values):
-                    pass
-
-                elif pixel > min(neighbour_values):
-                    lowest = min(neighbour_values)
-                    index = neighbour_values.index(lowest)
-                    diff = pixel * diffusion_index
-                    benefactor = in_raster[x + (neighbouring_cells[index][0]), y + (neighbouring_cells[index][1])]
-                    benefactor += diff
-                    pixel -= diff
-                else:
-                    pass
-
-                y+=1
 
 
-            x+=1
 
 
-    except:
-        print("ERROR: probably np array index out of bounds")
+    out_raster = np.add(in_raster, temporary_raster)
+    return out_raster
+
+
+
+
+
+
+def decider_diffusion(in_raster, temporary_raster, x, y, diffusion_index):
+    '''decides from where to where diffusion is taking place'''
+
+    pixel = in_raster[x, y]
+
+    neighbouring_cells = [(-1, -1), (0, -1), (1, -1), (-1, 0), (1, 0), (-1, 1), (0, 1), (1, 1)]
+    neighbour_values = []
+
+    for neighbour in neighbouring_cells:
+        neighbour_values.append(in_raster[neighbour])
+
+    minimum = min(neighbour_values)
+    min_index = neighbour_values.index(minimum)
+    maximum = max(neighbour_values)
+    max_index = neighbour_values.index(maximum)
+
+    if pixel > maximum:
+        #value of pixel is highest in surroundings
+        #print("pixel value is {}, max value is {}".format(pixel, maximum))
+
+        #calculation of energy exchange
+        diff = pixel*diffusion_index
+        tempX = x+neighbouring_cells[min_index][0]
+        tempY = y+neighbouring_cells[min_index][1]
+
+        if tempX < 0 or tempY < 0:
+            #print("tried to access pixel out of bounds")
+            pass
+
+        else:
+            count = minCounter(neighbour_values)
+
+            if count > 1:
+                print(count)
+            else:
+                pass
+            temporary_raster[x, y] = pixel - diff
+            temporary_raster[tempX, tempY] += diff
+
+
+        #print("pixel at {},{} gave {} to temp_pixel at {},{}".format(x,y,diff,tempX,tempY))
+        #print("{},{}---->{},{}\n\n".format(x, y, tempX, tempY))
+
+    elif pixel < minimum:
+        #value of pixel is lowest in surroundings
+        #print("pixel value is {}, min value is {}".format(pixel, minimum))
+
+        # calculation of energy exchange
+        diff = maximum * diffusion_index
+        tempX = x + neighbouring_cells[max_index][0]
+        tempY = y + neighbouring_cells[max_index][1]
+
+        if tempX < 0 or tempY < 0:
+            #print("tried to access pixel out of bounds")
+            pass
+
+        else:
+            count = maxCounter(neighbour_values)
+            if count > 1:
+                print(count)
+            else:
+                pass
+            temporary_raster[x, y] += pixel+diff
+            temporary_raster[tempX, tempY] -= diff
+
+        #print("pixel at {},{} gave {} to temp_pixel at {},{}".format(x,y,diff,tempX,tempY))
+        #print("{},{}---->{},{}\n\n".format(x, y, tempX, tempY))
+
+    elif minimum < pixel < maximum:
+        #value of pixel is in range of surrounding values
+        #print("pixel value is {}, range is from {} to {}".format(pixel, minimum, maximum))
+
+        diff = maximum * diffusion_index
+        tempX = x + (neighbouring_cells[max_index][0])
+        tempY = y + (neighbouring_cells[max_index][1])
+
+        if tempX < 0 or tempY < 0:
+            #print("tried to access pixel out of bounds")
+            pass
+
+        else:
+            temporary_raster[x, y] += pixel+diff
+            temporary_raster[tempX,tempY] -= diff
+
+        #print("pixel at {},{} gave {} to temp_pixel at {},{}".format(x,y,diff,tempX,tempY))
+        #print("{},{}---->{},{}\n\n".format(x,y,tempX,tempY))
+
+    else:
+        #print("What the hell happened here at pixel {},{}??".format(x,y))
         pass
 
-    return in_raster
+    return temporary_raster
+
+def maxCounter(list):
+
+    count = list.count(max(list))
+    return count
+
+def minCounter(list):
+    count = list.count(min(list))
+    return count
+
+
+
+
 
 def gravity():
     """introduces gravity for liquid in container"""
-
-
     pass
 
 def materials(in_raster, resX, resY, fill_temp):

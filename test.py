@@ -1,7 +1,11 @@
 import numpy as np
+import random
 
-test = max(0,2,2,1)
+list = [1,1,2,5,4,2,5]
 
 
 
-print(test)
+while True:
+    rando = random.randint(0, len(list))
+    print(rando)
+

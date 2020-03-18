@@ -12,18 +12,19 @@ from convectionModel.physics import *
 
 
 # raster size and timesteps
-resX = 50
+resX = 100
 resY = resX
 dpi = 300
 timesteps = 10
-container_temp = 10
+container_temp = -10
 
 # fill temperature and height of pre-filled liquid as well as energy lost to the exterior of the system
 pre_fill = True
-fill_temp = 30
+fill_temp = 40
 filling_height = 0.75
-diffusion_index = 0.1
-loss_over_time = diffusion_index*2
+diffusion_index = 0.75
+diffusion_degree = 12
+loss_over_time = 0
 
 # set up list to convert output to gif
 out_rasters = []
@@ -50,12 +51,13 @@ while iteration < timesteps:
     else:
         #get materials from initial raster
         mats = materials(temperature_raster, resX, resY, fill_temp)
+
         # calculate temperature diffusion and updraft
-        temperature_raster = diffusion(temperature_raster, resX, resY, diffusion_index, container_temp, loss_over_time, iteration)
+        temperature_raster = diffusion(temperature_raster, resX, resY, diffusion_index, container_temp, loss_over_time, iteration, diffusion_degree)
 
-
-        # add container
+        # add container (for visuals)
         container = addContainer(temperature_raster, container_temp)
+
 
 
 

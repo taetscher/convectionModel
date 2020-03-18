@@ -9,8 +9,8 @@ def environmental(resX,resY):
     pre_fill = boolean; if True a container has been filled'''
     #sets up random raster conaining values between 0 and 1
 
-
-    temperature_raster = np.full(shape=(resX,resY),fill_value=20)
+    temperature_raster = np.array(np.random.uniform(low=15, high=25, size=(resX, resY)))
+    #temperature_raster = np.full(shape=(resX,resY),fill_value=20)
 
     return temperature_raster
 
@@ -67,6 +67,7 @@ def addContainer(raster, container_temp):
                  'container_tl':container_tl,
                  'container_br':container_br,
                  'container_tr':container_tr}
+    print(raster)
     return container
 
 #pre-fill container
@@ -129,7 +130,6 @@ def containerFill(container, temperature=20):
 #---------------------------------------------------------
 #                       PHYSICS STUFF
 
-
 def diffusion(in_raster, resX, resY, diffusion_index, container_temp, loss_over_time, iteration, diffusion_degree):
 
     """Calculates how much the liquid rises and diffuses energy
@@ -139,9 +139,9 @@ def diffusion(in_raster, resX, resY, diffusion_index, container_temp, loss_over_
 
 
     #set up a temporary raster to allow for energy transfer and pad the array to account for external influence
-    temporary_raster = np.full(shape=(resX, resY), fill_value=20-(iteration*loss_over_time))
-    temporary_raster[1:-1, 1:-1]=0
-    temporary_raster[-1]=container_temp
+    temporary_raster = np.zeros(shape=(resX,resY))
+    temporary_raster[1:-1, 1:-1] = 0
+    temporary_raster[-1] = container_temp
 
 
     #loop through and calculate energy transfer per cell
@@ -153,28 +153,22 @@ def diffusion(in_raster, resX, resY, diffusion_index, container_temp, loss_over_
         #loop through columns
         while x < resY:
 
-            temporary_raster = decider_diffusion(in_raster,temporary_raster,x,y, diffusion_index, diffusion_degree)
-
-            # add container (simulating cooling)
-            addContainer(temporary_raster,container_temp)
-
+            temporary_raster = decider_diffusion_temp(in_raster,temporary_raster,x,y, diffusion_index, diffusion_degree)
+            in_raster = decider_diffusion_in(in_raster,temporary_raster,x,y, diffusion_index, diffusion_degree)
 
 
             x+=1
         y+=1
 
     # pad again
-    pad = np.full(shape=(resX, resY), fill_value=15 - (loss_over_time*iteration))
-    pad[1:-1, 1:-1] = 0
-    pad[-1] = container_temp
-    temporary_raster = np.add(temporary_raster, pad)
+    temporary_raster[-1] = container_temp
 
 
     # add in_raster to temporary raster to compute diffusion of energy
     out_raster = np.add(in_raster, temporary_raster)
     return out_raster * (1-loss_over_time)
 
-def decider_diffusion(in_raster, temporary_raster, x, y, diffusion_index, diffusion_degree):
+def decider_diffusion_temp(in_raster, temporary_raster, x, y, diffusion_index, diffusion_degree):
     '''decides from where to where diffusion is taking place, is executed on each pixel'''
 
     #locate the pixel the decider is assessing (x = columns, y=rows)!
@@ -189,97 +183,72 @@ def decider_diffusion(in_raster, temporary_raster, x, y, diffusion_index, diffus
     for neighbour in neighbouring_cells:
         neighbour_values.append(in_raster[neighbour])
 
-    maximum = max(neighbour_values)
-    minimum = min(neighbour_values)
 
-    #get the index of both maximum and minimum
-    min_index = neighbour_values.index(minimum)
-    max_index = neighbour_values.index(maximum)
+    # calculate indices for neighbouring cells
+    neighs = []
+    for neighbour in neighbouring_cells:
 
-    # if pixel is within the range of other neighbours: diffuse from highest neigbour to pixel
-    if minimum < pixel < maximum:
+        x_temp = x + neighbour[0]
+        y_temp = y + neighbour[1]
+        neighs.append((x_temp,y_temp))
 
-        x_temp = x + neighbouring_cells[max_index][0]
-        y_temp = y + neighbouring_cells[max_index][1]
+    #get how many are legal (within bounds)
+    division = len(neighs)
 
-        if x_temp < 0 or y_temp < 0:
-            pass
-        elif x_temp > res or y_temp > res:
-            pass
-
-        else:
-            try:
-                temp_pixel = temporary_raster[x_temp, y_temp]
-                diff = diffusion_index * temp_pixel
-                temporary_raster[x,y] += diff
-                temporary_raster[x_temp, y_temp] -= diff
-            except IndexError:
+    #diffuse
+    for neigh in neighs:
+        try:
+            if neigh[1] < 0 or neigh[1] < 0:
+                pass
+            elif neigh[0] > res or neigh[0] > res:
                 pass
 
+            else:
+                try:
+                    temp_pixel = temporary_raster[neigh[0], neigh[1]]
+                    diff = (diffusion_index * pixel) / division
+                    temporary_raster[neigh[0], neigh[1]] += diff
+                except IndexError:
+                    pass
 
-
-
-    # if pixel is higher than any neighbour: diffuse part of pixel to lowest neighbour
-    elif pixel < minimum:
-
-        x_temp = x + neighbouring_cells[min_index][0]
-        y_temp = y + neighbouring_cells[min_index][1]
-
-        if x_temp < 0 or y_temp < 0:
+        except IndexError:
             pass
-        elif x_temp > res or y_temp > res:
-            pass
-
-        else:
-            try:
-                diff = diffusion_index * pixel
-                temporary_raster[x, y] -= diff
-                temporary_raster[x_temp, y_temp] += diff
-            except IndexError:
-                pass
-
-
-    # if pixel is lower than any neighbour: diffuse from highest neigbour to pixel
-    elif pixel < minimum:
-
-        x_temp = x + neighbouring_cells[max_index][0]
-        y_temp = y + neighbouring_cells[max_index][1]
-
-        if x_temp < 0 or y_temp < 0:
-            pass
-        elif x_temp > res or y_temp > res:
-            pass
-
-        else:
-            try:
-                temp_pixel = temporary_raster[x_temp, y_temp]
-                diff = diffusion_index * temp_pixel
-                temporary_raster[x, y] += diff
-                temporary_raster[x_temp, y_temp] -= diff
-            except IndexError:
-                pass
-
-    #if pixel is encompassed with other pixels of exact same value, distribute upwards
-    elif pixel == minimum == maximum:
-        diff = diffusion_index * pixel
-        x_temp = x - 1
-        y_temp = y
-
-        if x_temp < 0 or y_temp < 0:
-            pass
-        elif x_temp > res or y_temp > res:
-            pass
-
-        else:
-            try:
-                temporary_raster[x, y] -= diff
-                temporary_raster[x_temp, y_temp] += diff
-            except IndexError:
-                pass
-
-
 
     return temporary_raster
+
+def decider_diffusion_in(in_raster, temporary_raster, x, y, diffusion_index, diffusion_degree):
+    '''decides from where to where diffusion is taking place, is executed on each pixel'''
+
+    #locate the pixel the decider is assessing (x = columns, y=rows)!
+    pixel = in_raster[x, y]
+    res = np.shape(in_raster)[0]
+
+    #set up to record neighbouring cells
+    neighbouring_cells = neighbourhood(x,y,diffusion_degree)
+    neighbour_values = []
+
+    #record neighbouring cells' values, as well as maxima/minima
+    for neighbour in neighbouring_cells:
+        neighbour_values.append(in_raster[neighbour])
+
+
+    # calculate indices for neighbouring cells
+    neighs = []
+    for neighbour in neighbouring_cells:
+
+        x_temp = x + neighbour[0]
+        y_temp = y + neighbour[1]
+        neighs.append((x_temp,y_temp))
+
+    #get how many are legal (within bounds)
+    division = len(neighs)
+
+    #diffuse
+
+    diff = (diffusion_index * pixel) / division
+    in_raster[x, y] -= diff
+
+    return in_raster
 
 def maxCounter(list):
 
@@ -313,6 +282,8 @@ def neighbourhood(x,y,degree):
         a += 1
 
     return neighbours
+
+
 
 
 

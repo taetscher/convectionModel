@@ -22,8 +22,8 @@ container_temp = -10
 pre_fill = True
 fill_temp = 40
 filling_height = 0.75
-diffusion_index = 0.75
-diffusion_degree = 12
+diffusion_index = 0.5
+diffusion_degree = 2
 loss_over_time = 0
 
 # set up list to convert output to gif
@@ -33,7 +33,7 @@ gif_duration = 0.5 #second(s)
 
 #set up iteration
 iteration = 0
-temperature_raster = np.zeros((resX,resY))
+temperature_raster = np.zeros(shape=(resX,resY))
 
 
 while iteration < timesteps:
@@ -49,14 +49,10 @@ while iteration < timesteps:
 
 
     else:
-        #get materials from initial raster
-        mats = materials(temperature_raster, resX, resY, fill_temp)
 
         # calculate temperature diffusion and updraft
-        temperature_raster = diffusion(temperature_raster, resX, resY, diffusion_index, container_temp, loss_over_time, iteration, diffusion_degree)
+        diffusion(temperature_raster, resX, resY, diffusion_index, container_temp, loss_over_time, iteration, diffusion_degree)
 
-        # add container (for visuals)
-        container = addContainer(temperature_raster, container_temp)
 
 
 

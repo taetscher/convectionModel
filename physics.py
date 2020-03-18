@@ -130,46 +130,41 @@ def containerFill(container, temperature=20):
 #                       PHYSICS STUFF
 
 
-def diffusion(in_raster, resX, resY, diffusion_index, container_temp):
+def diffusion(in_raster, resX, resY, diffusion_index, container_temp, loss_over_time, iteration):
 
     """Calculates how much the liquid rises and diffuses energy
     because of its temperature.
 
     - based on input raster with temperatures """
 
-    temporary_raster = np.zeros(shape=(resX, resY), dtype=int)
-    edges = [[0, resY-1],[resX-1, 0],[0, resX-1],[resY-1, 0]]
-    for edge in edges:
-        np.put(temporary_raster,edge,20)
-        print(temporary_raster)
 
+    #set up a temporary raster to allow for energy transfer and pad the array to account for external influence
+    temporary_raster = np.full(shape=(resX, resY), fill_value=20)
+    temporary_raster[1:-1, 1:-1]=0
+
+    #loop through and calculate energy transfer per cell
     x = 0
-
     while x < resX-1:
 
         y = 0
-        while y < resY-1:
+        while y < resY-2:
 
-            temporary_raster = decider_diffusion(in_raster,temporary_raster,x,y, diffusion_index)
+            temporary_raster = decider_diffusion(in_raster,temporary_raster,x,y, diffusion_index, loss_over_time)
             #print(decided)
 
             y+=1
         x+=1
 
+    # pad again
+    pad = np.full(shape=(resX, resY), fill_value=15 - (loss_over_time*iteration))
+    pad[1:-1, 1:-1] = 0
+    temporary_raster = np.add(temporary_raster, pad)
 
-
-
-
-
+    # add in_raster to temporary raster to compute diffusion of energy
     out_raster = np.add(in_raster, temporary_raster)
     return out_raster
 
-
-
-
-
-
-def decider_diffusion(in_raster, temporary_raster, x, y, diffusion_index):
+def decider_diffusion(in_raster, temporary_raster, x, y, diffusion_index, loss_over_time):
     '''decides from where to where diffusion is taking place'''
 
     pixel = in_raster[x, y]
@@ -186,8 +181,6 @@ def decider_diffusion(in_raster, temporary_raster, x, y, diffusion_index):
     max_index = neighbour_values.index(maximum)
 
     if pixel > maximum:
-        #value of pixel is highest in surroundings
-        #print("pixel value is {}, max value is {}".format(pixel, maximum))
 
         #calculation of energy exchange
         diff = pixel*diffusion_index
@@ -205,16 +198,10 @@ def decider_diffusion(in_raster, temporary_raster, x, y, diffusion_index):
                 print(count)
             else:
                 pass
-            temporary_raster[x, y] = pixel - diff
+            in_raster[x, y] = pixel - diff
             temporary_raster[tempX, tempY] += diff
 
-
-        #print("pixel at {},{} gave {} to temp_pixel at {},{}".format(x,y,diff,tempX,tempY))
-        #print("{},{}---->{},{}\n\n".format(x, y, tempX, tempY))
-
     elif pixel < minimum:
-        #value of pixel is lowest in surroundings
-        #print("pixel value is {}, min value is {}".format(pixel, minimum))
 
         # calculation of energy exchange
         diff = maximum * diffusion_index
@@ -231,15 +218,10 @@ def decider_diffusion(in_raster, temporary_raster, x, y, diffusion_index):
                 print(count)
             else:
                 pass
-            temporary_raster[x, y] += pixel+diff
+            in_raster[x, y] += pixel+diff
             temporary_raster[tempX, tempY] -= diff
 
-        #print("pixel at {},{} gave {} to temp_pixel at {},{}".format(x,y,diff,tempX,tempY))
-        #print("{},{}---->{},{}\n\n".format(x, y, tempX, tempY))
-
     elif minimum < pixel < maximum:
-        #value of pixel is in range of surrounding values
-        #print("pixel value is {}, range is from {} to {}".format(pixel, minimum, maximum))
 
         diff = maximum * diffusion_index
         tempX = x + (neighbouring_cells[max_index][0])
@@ -250,17 +232,18 @@ def decider_diffusion(in_raster, temporary_raster, x, y, diffusion_index):
             pass
 
         else:
-            temporary_raster[x, y] += pixel+diff
+            in_raster[x, y] += pixel+diff
             temporary_raster[tempX,tempY] -= diff
-
-        #print("pixel at {},{} gave {} to temp_pixel at {},{}".format(x,y,diff,tempX,tempY))
-        #print("{},{}---->{},{}\n\n".format(x,y,tempX,tempY))
 
     else:
         #print("What the hell happened here at pixel {},{}??".format(x,y))
         pass
 
-    return temporary_raster
+
+
+
+    #calculate energy loss over time and return the calculated raster
+    return temporary_raster*(1-loss_over_time)
 
 def maxCounter(list):
 

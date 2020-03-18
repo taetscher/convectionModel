@@ -12,17 +12,18 @@ from convectionModel.physics import *
 
 
 # raster size and timesteps
-resX = 100
+resX = 50
 resY = resX
 dpi = 300
 timesteps = 10
-container_temp = -10
+container_temp = 10
 
-# fill temperature and height of pre-filled liquid
+# fill temperature and height of pre-filled liquid as well as energy lost to the exterior of the system
 pre_fill = True
 fill_temp = 30
 filling_height = 0.75
-diffusion_index = 0.5
+diffusion_index = 0.1
+loss_over_time = diffusion_index*2
 
 # set up list to convert output to gif
 out_rasters = []
@@ -50,7 +51,7 @@ while iteration < timesteps:
         #get materials from initial raster
         mats = materials(temperature_raster, resX, resY, fill_temp)
         # calculate temperature diffusion and updraft
-        temperature_raster = diffusion(temperature_raster, resX, resY, diffusion_index, container_temp)
+        temperature_raster = diffusion(temperature_raster, resX, resY, diffusion_index, container_temp, loss_over_time, iteration)
 
 
         # add container
@@ -85,9 +86,9 @@ print("creating .gif...")
 
 images = []
 
-for raster in out_rasters:
-    images.append(imageio.imread(raster))
-    imageio.mimsave('gifs/convection.gif', images, duration=gif_duration)
+#for raster in out_rasters:
+    #images.append(imageio.imread(raster))
+    #imageio.mimsave('gifs/convection.gif', images, duration=gif_duration)
 
 
 print("done")

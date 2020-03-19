@@ -41,7 +41,7 @@ def timestepper(t,timesteps, in_raster, container_temp, filling_height, fill_tem
             plotter(filepath,raster,upper,lower,t)
 
         else:
-            print("Calculating diffusion...")
+            print("Calculating diffusion at step {}...".format(t))
 
             # calculate temperature diffusion
             raster = diffusion(raster, resX, resY, diffusion_index, container_temp, loss_over_time, t, diffusion_degree)
@@ -54,7 +54,6 @@ def timestepper(t,timesteps, in_raster, container_temp, filling_height, fill_tem
         t += 1
 
     return out_rasters
-
 
 
 # set up environmental raster
@@ -254,8 +253,8 @@ def diffusion(in_raster, resX, resY, diffusion_index, container_temp, loss_over_
 
     #set up a temporary raster to allow for energy transfer and pad the array to account for external influence
     temporary_raster = np.zeros(shape=(resX,resY))
-    temporary_raster[1:-1, 1:-1] = 0
-    temporary_raster[-1] = container_temp
+    #temporary_raster[1:-1, 1:-1] = 0
+    #temporary_raster[-1] = container_temp
 
 
     #loop through and calculate energy transfer per cell
@@ -267,21 +266,19 @@ def diffusion(in_raster, resX, resY, diffusion_index, container_temp, loss_over_
         #loop through columns
         while x < resY:
 
-            temporary_raster = decider_diffusion_temp(in_raster,temporary_raster,x,y, diffusion_index, diffusion_degree)
+            decider_diffusion_temp(in_raster,temporary_raster,x,y, diffusion_index, diffusion_degree)
 
             x+=1
 
-        #cooling = coolingRaster(resX, resY, container_temp)
-        #temporary_raster = np.add(temporary_raster, cooling)
+
         y+=1
 
-
-
-    # pad again
-    #temporary_raster[-1] = container_temp
-
-
     # add in_raster to temporary raster to compute diffusion of energy
+    temporary_raster = np.add(in_raster, temporary_raster)
+
+    cooling = coolingRaster(resX, resY, container_temp)
+    temporary_raster = np.add(temporary_raster, cooling)
+
 
     return temporary_raster
 
@@ -314,36 +311,28 @@ def decider_diffusion_temp(in_raster, temporary_raster, x, y, diffusion_index, d
 
     #get how many are legal (within bounds)
     division = len(neighs)
+    diff = pixel - (pixel * diffusion_index)
 
-    diff = ((1 - diffusion_index) * pixel) / division
-
-
+    #check that a double minus is not converted to plus
+    if diff < 0 and temporary_raster[x, y] <0:
+        temporary_raster[x,y] += diff
+    else:
+        temporary_raster[x,y] -= diff
 
     #diffuse
     for neigh in neighs:
+
         try:
-            if neigh[1] < 0 or neigh[1] < 0:
-                "pixel outta bounds 1"
-                pass
-            elif neigh[0] > res or neigh[1] > res:
-                "pixel outta bounds 2"
-                pass
+            #if index of target cell is in bounds, add diffusion value
+            temporary_raster[neigh[0], neigh[1]] += diff/division
 
-            else:
-                try:
-                    #if index of target cell is in bounds, add diffusion value
-                    temporary_raster[neigh[0], neigh[1]] += diff
+            # subtract diffusion value from original raster
 
-                    # subtract diffusion value from original raster
-                    in_raster[x,y] -= diff
 
-                except IndexError:
-                    #print("pixel outta bounds 3")
-                    pass
-
-        except IndexError:
-            print("pixel outta bounds 4")
+        except:
+            #print("pixel outta bounds 3")
             pass
+
 
     return temporary_raster
 

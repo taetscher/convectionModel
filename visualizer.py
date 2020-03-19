@@ -14,15 +14,15 @@ from convectionModel.physics import *
 # raster size and timesteps
 resX = 100
 resY = resX
-timesteps = 20
+timesteps = 50
 container_temp = -10
 
 # fill temperature and height of pre-filled liquid as well as energy lost to the exterior of the system
 pre_fill = True
 fill_temp = 40
 filling_height = 0.75
-diffusion_index = 0.01
-diffusion_degree = 6
+diffusion_index = 0.005
+diffusion_degree = 3
 loss_over_time = 0
 
 # set up list to convert output to gif r

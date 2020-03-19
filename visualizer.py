@@ -14,7 +14,7 @@ from convectionModel.physics import *
 # raster size and timesteps
 resX = 100
 resY = resX
-timesteps = 10
+timesteps = 20
 container_temp = -10
 
 # fill temperature and height of pre-filled liquid as well as energy lost to the exterior of the system
@@ -22,7 +22,7 @@ pre_fill = True
 fill_temp = 40
 filling_height = 0.75
 diffusion_index = 0.01
-diffusion_degree = 9
+diffusion_degree = 6
 loss_over_time = 0
 
 # set up list to convert output to gif
@@ -43,7 +43,7 @@ t = 0
 
 in_raster = np.random.random(size=(resX,resY))
 
-timestepper(t,timesteps, in_raster, container_temp, filling_height, fill_temp, diffusion_index, loss_over_time, diffusion_degree)
+out_rasters = timestepper(t,timesteps, in_raster, container_temp, filling_height, fill_temp, diffusion_index, loss_over_time, diffusion_degree)
 
 
 # create gif from individual timesteps
@@ -53,5 +53,5 @@ images = []
 #for raster in out_rasters:
     #images.append(imageio.imread(raster))
     #imageio.mimsave('gifs/convection.gif', images, duration=gif_duration)
-
+print(out_rasters)
 print("done")

@@ -1,9 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def plotter(filepath, raster, upper, lower):
+def plotter(filepath, raster, upper, lower, t):
+    ''' plots input raster'''
 
     plt.imshow(raster, cmap='inferno')
+    plt.title("timestep: {}".format(t))
     plt.colorbar()
     plt.clim(lower, upper)
     plt.savefig(filepath)
@@ -36,7 +38,7 @@ def timestepper(t,timesteps, in_raster, container_temp, filling_height, fill_tem
             raster = containerPreFill(container,raster,resX,resY,filling_height=filling_height,fill_temp=fill_temp)
 
             # save figure
-            plotter(filepath,raster,upper,lower)
+            plotter(filepath,raster,upper,lower,t)
 
         else:
             print("Calculating diffusion...")
@@ -46,10 +48,12 @@ def timestepper(t,timesteps, in_raster, container_temp, filling_height, fill_tem
 
 
             #save figure
-            plotter(filepath,raster,upper,lower)
+            plotter(filepath,raster,upper,lower,t)
 
         out_rasters.append(filepath)
         t += 1
+
+    return out_rasters
 
 
 
@@ -297,7 +301,10 @@ def decider_diffusion_temp(in_raster, temporary_raster, x, y, diffusion_index, d
 
     #record neighbouring cells' values, as well as maxima/minima
     for neighbour in neighbouring_cells:
-        neighbour_values.append(in_raster[neighbour])
+        try:
+            neighbour_values.append(in_raster[neighbour])
+        except IndexError:
+            pass
 
 
     # calculate indices for neighbouring cells
@@ -306,12 +313,17 @@ def decider_diffusion_temp(in_raster, temporary_raster, x, y, diffusion_index, d
 
         x_temp = x + neighbour[0]
         y_temp = y + neighbour[1]
-        neighs.append((x_temp,y_temp))
+
+        neighs.append((x_temp, y_temp))
 
 
     #get how many are legal (within bounds)
     division = len(neighs)
-    diff = ((1-diffusion_index) * pixel) / division
+    try:
+        diff = ((1 - diffusion_index) * pixel) / division
+    except RuntimeWarning:
+        pass
+
 
     #diffuse
     for neigh in neighs:
@@ -319,7 +331,7 @@ def decider_diffusion_temp(in_raster, temporary_raster, x, y, diffusion_index, d
             if neigh[1] < 0 or neigh[1] < 0:
                 "pixel outta bounds 1"
                 pass
-            elif neigh[0] > res or neigh[0] > res:
+            elif neigh[0] > res or neigh[1] > res:
                 "pixel outta bounds 2"
                 pass
 
@@ -332,7 +344,7 @@ def decider_diffusion_temp(in_raster, temporary_raster, x, y, diffusion_index, d
                     in_raster[x,y] -= diff
 
                 except IndexError:
-                    print("pixel outta bounds 3")
+                    #print("pixel outta bounds 3")
                     pass
 
         except IndexError:
@@ -340,44 +352,6 @@ def decider_diffusion_temp(in_raster, temporary_raster, x, y, diffusion_index, d
             pass
 
     return temporary_raster
-
-def decider_diffusion_in(in_raster, temporary_raster, x, y, diffusion_index, diffusion_degree):
-    '''decides from where to where diffusion is taking place, is executed on each pixel'''
-
-    #locate the pixel the decider is assessing (x = columns, y=rows)!
-    pixel = in_raster[x, y]
-    res = np.shape(in_raster)[0]
-
-    #set up to record neighbouring cells
-    neighbouring_cells = neighbourhood(x,y,diffusion_degree)
-    neighbour_values = []
-
-    #record neighbouring cells' values, as well as maxima/minima
-    for neighbour in neighbouring_cells:
-        neighbour_values.append(in_raster[neighbour])
-
-
-    # calculate indices for neighbouring cells
-    neighs = []
-    for neighbour in neighbouring_cells:
-
-        x_temp = x + neighbour[0]
-        y_temp = y + neighbour[1]
-
-        if x_temp == 0 and y_temp == 0:
-            pass
-        else:
-            neighs.append((x_temp,y_temp))
-
-    #get how many are legal (within bounds)
-    division = len(neighs)
-
-    #diffuse
-
-    diff = (diffusion_index * pixel) / division
-    in_raster[x, y] -= diff
-
-    return in_raster
 
 def maxCounter(list):
 
@@ -396,21 +370,33 @@ def neighbourhood(x,y,degree):
     # loop through rows
     a = y
     # loop through rows
-    while y - degree/2 < a < y  + degree/2:
+
+    while a - degree <= a <= a + degree :
 
         b = x
         # loop through columns
-        while x - degree/2 < b < x + degree/2:
+        while b - degree <= b <= b + degree:
 
-            index_rel_a = y - a
-            index_rel_b = x - b
 
-            neighbours.append((index_rel_a,index_rel_b))
+            index_rel_a = a
+            index_rel_b = b
+            index_a = a+y
+            index_b = b+x
+
+            try:
+
+                neighbours.append((index_rel_a,index_rel_b))
+                #neighbours.append((index_a,index_b))
+
+
+            except IndexError:
+                print("meh")
+
 
             b += 1
         a += 1
 
-    return neighbours
+        return neighbours
 
 
 

@@ -115,8 +115,6 @@ def addContainer(raster, container_temp):
     np.put(leftedge_col, [range(container_tl[1], bottomrow_index)], v=color_value)
     np.put(rightedge_col, [range(container_tr[1], bottomrow_index)], v=color_value)
 
-    print(raster)
-
     #ooutput container information to pass to other functions
     container = {'container_bl': container_bl,
                  'container_tl':container_tl,
@@ -124,6 +122,59 @@ def addContainer(raster, container_temp):
                  'container_tr':container_tr}
 
     return container
+
+def coolingRaster(resX, resY, container_temp):
+
+    '''Creates a layer with only the cooling container information, can be added to other rasters to simulate cooling the container'''
+
+    #add container to raster
+    color_value=container_temp
+
+    #get dimensions from raster
+    x_dim = resX
+    y_dim = resY
+
+    raster = np.zeros(shape=(resX,resY))
+
+    #print("dimensions: {},{}".format(x_dim,y_dim))
+
+
+    # define container width and height
+    container_width = x_dim / 2
+    container_height = y_dim/2
+
+    # set coordinates of container corners
+    container_bl = [int(container_width/2),0]
+    container_br = [int(container_bl[0])+int(container_width),0]
+    container_tl = [int(container_width/2),(int(container_height))]
+    container_tr = [int(container_bl[0])+int(container_width),int(container_height)]
+
+    #print("Corners:\ntl: {}\nbl: {}\ntr: {}\nbr: {}".format(container_tl,container_bl,container_tr,container_br))
+
+
+    # create bottom of container
+    col_cont_bl = container_bl[0]
+    col_cont_br = container_br[0]
+
+    # get rows/cols of edges of container
+    bottomrow_index = y_dim - 1
+    bottomedge_row = raster[-1,:]
+    leftedge_col = raster[:,container_tl[0]]
+    rightedge_col = raster[:,container_tr[0]]
+
+    #set edges of container to be values to 10
+    np.put(bottomedge_row, [range(container_bl[0], container_br[0]+1)],v=color_value)
+    np.put(leftedge_col, [range(container_tl[1], bottomrow_index)], v=color_value)
+    np.put(rightedge_col, [range(container_tr[1], bottomrow_index)], v=color_value)
+
+    #ooutput container information to pass to other functions
+    container = {'container_bl': container_bl,
+                 'container_tl':container_tl,
+                 'container_br':container_br,
+                 'container_tr':container_tr}
+
+    return raster
+
 
 #pre-fill container
 def containerPreFill(container, raster, resX, resY, filling_height, fill_temp):
@@ -199,14 +250,14 @@ def diffusion(in_raster, resX, resY, diffusion_index, container_temp, loss_over_
 
     #set up a temporary raster to allow for energy transfer and pad the array to account for external influence
     temporary_raster = np.zeros(shape=(resX,resY))
-    #temporary_raster[1:-1, 1:-1] = 0
-    #temporary_raster[-1] = container_temp
+    temporary_raster[1:-1, 1:-1] = 0
+    temporary_raster[-1] = container_temp
 
 
     #loop through and calculate energy transfer per cell
     y = 0
     #loop through rows
-    while y < resX-1:
+    while y < resX:
 
         x = 0
         #loop through columns
@@ -215,8 +266,15 @@ def diffusion(in_raster, resX, resY, diffusion_index, container_temp, loss_over_
             temporary_raster = decider_diffusion_temp(in_raster,temporary_raster,x,y, diffusion_index, diffusion_degree)
 
 
+
+
             x+=1
+
+        cooling = coolingRaster(resX, resY, container_temp)
+        temporary_raster = np.add(temporary_raster, cooling)
         y+=1
+
+
 
     # pad again
     #temporary_raster[-1] = container_temp
@@ -305,7 +363,11 @@ def decider_diffusion_in(in_raster, temporary_raster, x, y, diffusion_index, dif
 
         x_temp = x + neighbour[0]
         y_temp = y + neighbour[1]
-        neighs.append((x_temp,y_temp))
+
+        if x_temp == 0 and y_temp == 0:
+            pass
+        else:
+            neighs.append((x_temp,y_temp))
 
     #get how many are legal (within bounds)
     division = len(neighs)

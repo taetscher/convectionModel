@@ -12,7 +12,7 @@ from convectionModel.physics import *
 
 
 # raster size and timesteps
-resX = 50
+resX = 100
 resY = resX
 timesteps = 10
 container_temp = -10
@@ -21,8 +21,8 @@ container_temp = -10
 pre_fill = True
 fill_temp = 40
 filling_height = 0.75
-diffusion_index = 0.1
-diffusion_degree = 6
+diffusion_index = 0.01
+diffusion_degree = 9
 loss_over_time = 0
 
 # set up list to convert output to gif
@@ -44,13 +44,6 @@ t = 0
 in_raster = np.random.random(size=(resX,resY))
 
 timestepper(t,timesteps, in_raster, container_temp, filling_height, fill_temp, diffusion_index, loss_over_time, diffusion_degree)
-
-
-
-
-
-
-
 
 
 # create gif from individual timesteps

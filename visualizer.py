@@ -12,9 +12,8 @@ from convectionModel.physics import *
 
 
 # raster size and timesteps
-resX = 100
+resX = 10
 resY = resX
-dpi = 300
 timesteps = 10
 container_temp = -10
 
@@ -33,25 +32,18 @@ gif_duration = 0.5 #second(s)
 
 #set up iteration
 iteration = 0
-temperature_raster = np.zeros(shape=(resX,resY))
 
 
-while iteration < timesteps:
 
-    # set up raster of environmental air temperature
-    if iteration == 0:
-        raster = environmental(resX, resY)
-        # add container
-        container = addContainer(raster, container_temp)
+# initialize the system
+print("Initializing the system...\n")
+plt.ioff()
 
-        # pre-fill container
-        temperature_raster = containerPreFill(container, raster, resX, resY, filling_height, fill_temp)
+t = 0
 
+in_raster = np.random.random(size=(resX,resY))
 
-    else:
-
-        # calculate temperature diffusion and updraft
-        diffusion(temperature_raster, resX, resY, diffusion_index, container_temp, loss_over_time, iteration, diffusion_degree)
+timestepper(t,timesteps, in_raster, container_temp, filling_height, fill_temp, diffusion_index, loss_over_time, diffusion_degree)
 
 
 
@@ -59,34 +51,14 @@ while iteration < timesteps:
 
 
 
-    # make sure it can be exported
-    print("iteration number {}".format(iteration))
-    plt.imshow(temperature_raster, cmap='inferno')
-    if iteration <=0:
-        plt.colorbar()
-    else:
-        pass
 
-
-
-    #save image at step n
-    filepath = "output/visualizationTest{}.png".format(iteration)
-    plt.title("Timestep {}".format(iteration+1))
-    plt.savefig(filepath, dpi=dpi)
-
-    out_rasters.append(filepath)
-
-    iteration +=1
 
 # create gif from individual timesteps
 print("creating .gif...")
-
-
 images = []
 
 #for raster in out_rasters:
     #images.append(imageio.imread(raster))
     #imageio.mimsave('gifs/convection.gif', images, duration=gif_duration)
-
 
 print("done")

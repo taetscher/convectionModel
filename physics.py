@@ -1,4 +1,55 @@
 import numpy as np
+import matplotlib.pyplot as plt
+
+def plotter(filepath, raster, upper, lower):
+
+    plt.imshow(raster, cmap='inferno')
+    plt.colorbar()
+    plt.clim(lower, upper)
+    plt.savefig(filepath)
+    plt.close('all')
+
+def timestepper(t,timesteps, in_raster, container_temp, filling_height, fill_temp, diffusion_index, loss_over_time, diffusion_degree):
+    raster = in_raster
+
+    resX = in_raster.shape[0]
+    resY = in_raster.shape[1]
+    out_rasters = []
+    upper = 40
+    lower = -10
+
+    while t < timesteps+1:
+        # define where to save to
+        filepath = "output/visualizationTest{}.png".format(t)
+
+        if t == 0:
+            print("Initializing System...")
+
+            # set up initial system state
+            raster = environmental(resX,resY)
+
+            # add a container
+            container = addContainer(raster,container_temp)
+
+            # fill the container with liquid
+            raster = containerPreFill(container,raster,resX,resY,filling_height=filling_height,fill_temp=fill_temp)
+
+            # save figure
+            plotter(filepath,raster,upper,lower)
+
+        else:
+            print("reducing values")
+
+            # calculate temperature diffusion
+            raster = raster * 0.9
+
+            #save figure
+            plotter(filepath,raster,upper,lower)
+
+        out_rasters.append(filepath)
+        t += 1
+
+
 
 # set up environmental raster
 def environmental(resX,resY):
@@ -67,7 +118,7 @@ def addContainer(raster, container_temp):
                  'container_tl':container_tl,
                  'container_br':container_br,
                  'container_tr':container_tr}
-    print(raster)
+
     return container
 
 #pre-fill container
@@ -80,46 +131,50 @@ def containerPreFill(container, raster, resX, resY, filling_height, fill_temp):
     resX, resY = pixel resolution of raster
     fill_temp = temperature of filled in liquid'''
 
+    # Make sure a container can actually be filled
+    if resX < 8:
+        print("Could not add pre-fill, raster resolution must be 8x8 or greater")
+        raise ValueError('Raster resolution too small. Change resolution to at least 8x8 pixels.')
 
 
-    #set up fill coordinates
-    fill_bl = [(container['container_bl'][0])+1,(container['container_bl'][1])+1]
-    fill_tl = [(container['container_tl'][0])+1,(container['container_tl'][1])+1]
-    fill_br = [(container['container_br'][0])-1,(container['container_br'][1])-1]
-    fill_tr = [(container['container_tr'][0])-1,(container['container_tr'][1])-1]
+    else:
+        # set up fill coordinates
+        fill_bl = [(container['container_bl'][0]) + 1, (container['container_bl'][1]) + 1]
+        fill_tl = [(container['container_tl'][0]) + 1, (container['container_tl'][1]) + 1]
+        fill_br = [(container['container_br'][0]) - 1, (container['container_br'][1]) - 1]
+        fill_tr = [(container['container_tr'][0]) - 1, (container['container_tr'][1]) - 1]
 
-    fill = [fill_bl,fill_tl,fill_br,fill_tr]
+        fill = [fill_bl, fill_tl, fill_br, fill_tr]
 
-    #fill container
-    x =0
+        # fill container
+        x = 0
 
-    #iterate through rows
-    while x < resX:
-        y = 0
-        #iterate through columns
-        while y < resY:
+        # iterate through rows
+        while x < resX:
+            y = 0
+            # iterate through columns
+            while y < resY:
 
-            try:
-                #only do this if the selected pixel is within the container
-                if x >= fill_bl[0] and x <= fill_br[0]:
-                    if y >= resY*filling_height and y <= resY-2:
-                        raster[y, x] = fill_temp
-
-
-            except:
-                # this is to prevent the program from collapsing in case one of the above conditions tries to
-                # access a pixel outside of the range of a numpy array, like a pixel with index particles[-10,
-                # -10] in that case the program should just pass the condition and move on
-                print("Pixel out of bounds of np array!")
-                pass
+                try:
+                    # only do this if the selected pixel is within the container
+                    if x >= fill_bl[0] and x <= fill_br[0]:
+                        if y >= resY * filling_height and y <= resY - 2:
+                            raster[y, x] = fill_temp
 
 
-            y+=1
+                except:
+                    # this is to prevent the program from collapsing in case one of the above conditions tries to
+                    # access a pixel outside of the range of a numpy array, like a pixel with index particles[-10,
+                    # -10] in that case the program should just pass the condition and move on
+                    print("Pixel out of bounds of np array!")
+                    pass
 
-        x += 1
+                y += 1
 
-    #output raster with pre-filled container
-    return raster
+            x += 1
+
+        # output raster with pre-filled container
+        return raster
 
 def containerFill(container, temperature=20):
 

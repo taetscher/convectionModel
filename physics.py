@@ -10,6 +10,8 @@ def plotter(filepath, raster, upper, lower):
     plt.close('all')
 
 def timestepper(t,timesteps, in_raster, container_temp, filling_height, fill_temp, diffusion_index, loss_over_time, diffusion_degree):
+    """ allows to set up initial system and also pass on raster to future steps"""
+
     raster = in_raster
 
     resX = in_raster.shape[0]
@@ -23,7 +25,6 @@ def timestepper(t,timesteps, in_raster, container_temp, filling_height, fill_tem
         filepath = "output/visualizationTest{}.png".format(t)
 
         if t == 0:
-            print("Initializing System...")
 
             # set up initial system state
             raster = environmental(resX,resY)
@@ -38,10 +39,11 @@ def timestepper(t,timesteps, in_raster, container_temp, filling_height, fill_tem
             plotter(filepath,raster,upper,lower)
 
         else:
-            print("reducing values")
+            print("Calculating diffusion...")
 
             # calculate temperature diffusion
-            raster = raster * 0.9
+            raster = diffusion(raster, resX, resY, diffusion_index, container_temp, loss_over_time, t, diffusion_degree)
+
 
             #save figure
             plotter(filepath,raster,upper,lower)
@@ -112,6 +114,8 @@ def addContainer(raster, container_temp):
     np.put(bottomedge_row, [range(container_bl[0], container_br[0]+1)],v=color_value)
     np.put(leftedge_col, [range(container_tl[1], bottomrow_index)], v=color_value)
     np.put(rightedge_col, [range(container_tr[1], bottomrow_index)], v=color_value)
+
+    print(raster)
 
     #ooutput container information to pass to other functions
     container = {'container_bl': container_bl,
@@ -195,8 +199,8 @@ def diffusion(in_raster, resX, resY, diffusion_index, container_temp, loss_over_
 
     #set up a temporary raster to allow for energy transfer and pad the array to account for external influence
     temporary_raster = np.zeros(shape=(resX,resY))
-    temporary_raster[1:-1, 1:-1] = 0
-    temporary_raster[-1] = container_temp
+    #temporary_raster[1:-1, 1:-1] = 0
+    #temporary_raster[-1] = container_temp
 
 
     #loop through and calculate energy transfer per cell
@@ -209,19 +213,18 @@ def diffusion(in_raster, resX, resY, diffusion_index, container_temp, loss_over_
         while x < resY:
 
             temporary_raster = decider_diffusion_temp(in_raster,temporary_raster,x,y, diffusion_index, diffusion_degree)
-            in_raster = decider_diffusion_in(in_raster,temporary_raster,x,y, diffusion_index, diffusion_degree)
 
 
             x+=1
         y+=1
 
     # pad again
-    temporary_raster[-1] = container_temp
+    #temporary_raster[-1] = container_temp
 
 
     # add in_raster to temporary raster to compute diffusion of energy
-    out_raster = np.add(in_raster, temporary_raster)
-    return out_raster * (1-loss_over_time)
+
+    return temporary_raster
 
 def decider_diffusion_temp(in_raster, temporary_raster, x, y, diffusion_index, diffusion_degree):
     '''decides from where to where diffusion is taking place, is executed on each pixel'''
@@ -247,26 +250,35 @@ def decider_diffusion_temp(in_raster, temporary_raster, x, y, diffusion_index, d
         y_temp = y + neighbour[1]
         neighs.append((x_temp,y_temp))
 
+
     #get how many are legal (within bounds)
     division = len(neighs)
+    diff = ((1-diffusion_index) * pixel) / division
 
     #diffuse
     for neigh in neighs:
         try:
             if neigh[1] < 0 or neigh[1] < 0:
+                "pixel outta bounds 1"
                 pass
             elif neigh[0] > res or neigh[0] > res:
+                "pixel outta bounds 2"
                 pass
 
             else:
                 try:
-                    temp_pixel = temporary_raster[neigh[0], neigh[1]]
-                    diff = (diffusion_index * pixel) / division
+                    #if index of target cell is in bounds, add diffusion value
                     temporary_raster[neigh[0], neigh[1]] += diff
+
+                    # subtract diffusion value from original raster
+                    in_raster[x,y] -= diff
+
                 except IndexError:
+                    print("pixel outta bounds 3")
                     pass
 
         except IndexError:
+            print("pixel outta bounds 4")
             pass
 
     return temporary_raster

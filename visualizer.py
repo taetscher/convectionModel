@@ -25,8 +25,7 @@ diffusion_index = 0.01
 diffusion_degree = 6
 loss_over_time = 0
 
-# set up list to convert output to gif
-out_rasters = []
+# set up list to convert output to gif r
 gif_duration = 0.5 #second(s)
 
 

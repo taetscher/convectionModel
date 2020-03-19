@@ -269,13 +269,10 @@ def diffusion(in_raster, resX, resY, diffusion_index, container_temp, loss_over_
 
             temporary_raster = decider_diffusion_temp(in_raster,temporary_raster,x,y, diffusion_index, diffusion_degree)
 
-
-
-
             x+=1
 
-        cooling = coolingRaster(resX, resY, container_temp)
-        temporary_raster = np.add(temporary_raster, cooling)
+        #cooling = coolingRaster(resX, resY, container_temp)
+        #temporary_raster = np.add(temporary_raster, cooling)
         y+=1
 
 
@@ -301,10 +298,8 @@ def decider_diffusion_temp(in_raster, temporary_raster, x, y, diffusion_index, d
 
     #record neighbouring cells' values, as well as maxima/minima
     for neighbour in neighbouring_cells:
-        try:
-            neighbour_values.append(in_raster[neighbour])
-        except IndexError:
-            pass
+        neighbour_values.append(in_raster[neighbour])
+
 
 
     # calculate indices for neighbouring cells
@@ -319,10 +314,9 @@ def decider_diffusion_temp(in_raster, temporary_raster, x, y, diffusion_index, d
 
     #get how many are legal (within bounds)
     division = len(neighs)
-    try:
-        diff = ((1 - diffusion_index) * pixel) / division
-    except RuntimeWarning:
-        pass
+
+    diff = ((1 - diffusion_index) * pixel) / division
+
 
 
     #diffuse
@@ -368,25 +362,21 @@ def neighbourhood(x,y,degree):
     neighbours = []
 
     # loop through rows
-    a = y
-    # loop through rows
+    a = y - degree
+    while a < y + degree :
 
-    while a - degree <= a <= a + degree :
-
-        b = x
         # loop through columns
-        while b - degree <= b <= b + degree:
+        b = x - degree
+        while b < x + degree:
 
 
-            index_rel_a = a
-            index_rel_b = b
-            index_a = a+y
-            index_b = b+x
+            index_rel_a = y-a
+            index_rel_b = x-b
 
             try:
 
                 neighbours.append((index_rel_a,index_rel_b))
-                #neighbours.append((index_a,index_b))
+
 
 
             except IndexError:
@@ -396,71 +386,4 @@ def neighbourhood(x,y,degree):
             b += 1
         a += 1
 
-        return neighbours
-
-
-
-
-
-
-
-
-def gravity():
-    """introduces gravity for liquid in container"""
-    pass
-
-def materials(in_raster, resX, resY, fill_temp):
-    '''Gets information on materials from initial raster.
-
-    0 == Air
-
-    2 == Container
-
-    3 == Pre-fill Liquid
-
-    '''
-
-
-    materials_raster = np.zeros((resX,resY))
-
-    #iterate through input raster to get data on materials
-    x=0
-
-    while x <= resX-1:
-
-        y=0
-
-        while y <= resY-1:
-
-            pixel = in_raster[x,y]
-
-            if pixel == -10:
-                materials_raster[x,y] = 2
-
-            elif pixel == fill_temp:
-                materials_raster[x,y] = 3
-            else:
-                pass
-
-
-
-            y += 1
-
-        x += 1
-
-    return materials_raster
-
-
-#---------------------------------------------------------
-
-#---------------------------------------------------------
-
-
-
-
-#---------------------------------------------------------
-
-
-
-
-
+    return neighbours

@@ -1,6 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import imageio
+import math
+
+#---------------------------------------------------------
+#                       SETUP STUFF
 
 def plotter(filepath, raster, upper, lower, t):
     ''' plots input raster'''
@@ -48,7 +52,7 @@ def timestepper(t,timesteps, in_raster, container_temp, filling_height, fill_tem
             raster = diffusion(raster, resX, resY, diffusion_index, container_temp, loss_over_time, t, diffusion_degree)
 
 
-            #save figure
+            # save figure
             plotter(filepath,raster,upper,lower,t)
 
         out_rasters.append(filepath)
@@ -56,8 +60,6 @@ def timestepper(t,timesteps, in_raster, container_temp, filling_height, fill_tem
 
     return out_rasters
 
-
-# set up environmental raster
 def environmental(resX,resY):
 
     '''creates a raster of size resX * resY, containing random values between 0 and 1
@@ -71,9 +73,15 @@ def environmental(resX,resY):
 
     return temperature_raster
 
+def abs(x):
+    if x >= 0:
+        return x
+    n = math.sqrt(x ** 2)
+    return abs(type(x)(n))
+
 #---------------------------------------------------------
 #                       CONTAINER STUFF
-# set up container
+
 def addContainer(raster, container_temp):
 
     '''Adds a container to the input raster layer where the container is centered, half as wide as the raster itself
@@ -179,8 +187,6 @@ def coolingRaster(resX, resY, container_temp):
 
     return raster
 
-
-#pre-fill container
 def containerPreFill(container, raster, resX, resY, filling_height, fill_temp):
 
     '''pre-fills the container with fluid.
@@ -252,25 +258,25 @@ def diffusion(in_raster, resX, resY, diffusion_index, container_temp, loss_over_
     - based on input raster with temperatures """
 
 
-    #set up a temporary raster to allow for energy transfer and pad the array to account for external influence
+    # set up a temporary raster to allow for energy transfer and pad the array to account for external influence
     temporary_raster = np.zeros(shape=(resX,resY))
 
-    #pad the raster to prevent overflow (pad width = diffusion_degree+1)
-    padding = diffusion_degree
-    temporary_raster = np.pad(temporary_raster,((padding,padding),(padding,padding)),mode='wrap')
-    in_raster = np.pad(in_raster, ((padding, padding), (padding, padding)), mode='wrap')
+    # pad the raster to prevent overflow (pad width = diffusion_degree+1)
+    padding = diffusion_degree + diffusion_degree
+    temporary_raster = np.pad(temporary_raster,((padding,padding),(padding,padding)),mode='maximum')
+    in_raster = np.pad(in_raster, ((padding, padding), (padding, padding)), mode='empty')
     resY = np.shape(temporary_raster)[1]
     resX = np.shape(temporary_raster)[0]
 
 
 
-    #loop through and calculate energy transfer per cell
+    # loop through and calculate energy transfer per cell
     y = padding
-    #loop through rows
+    # loop through rows
     while y < resY-padding :
 
         x = padding
-        #loop through columns
+        # loop through columns
         while x < resX-padding :
 
             decider_diffusion_temp(in_raster,temporary_raster,x,y, diffusion_index, diffusion_degree)
@@ -280,9 +286,9 @@ def diffusion(in_raster, resX, resY, diffusion_index, container_temp, loss_over_
 
         y+=1
 
-    #unpad the raster to regain its beauty [ymin,ymax][xmin,xmax]
-    temporary_raster = temporary_raster[diffusion_degree:-diffusion_degree, diffusion_degree:-diffusion_degree]
-    in_raster = in_raster[diffusion_degree:-diffusion_degree, diffusion_degree:-diffusion_degree]
+    # unpad the raster to regain its beauty [ymin,ymax][xmin,xmax]
+    temporary_raster = temporary_raster[padding:-padding, padding:-padding]
+    in_raster = in_raster[padding:-padding, padding:-padding]
 
     # add in_raster to temporary raster to compute diffusion of energy
     temporary_raster = np.add(in_raster, temporary_raster)
@@ -299,19 +305,17 @@ def diffusion(in_raster, resX, resY, diffusion_index, container_temp, loss_over_
 def decider_diffusion_temp(in_raster, temporary_raster, x, y, diffusion_index, diffusion_degree):
     '''decides from where to where diffusion is taking place, is executed on each pixel'''
 
-    #locate the pixel the decider is assessing (x = columns, y=rows)!
+    # locate the pixel the decider is assessing (x = columns, y=rows)!
     pixel = in_raster[x, y]
     res = np.shape(in_raster)[0]
 
-    #set up to record neighbouring cells
+    # set up to record neighbouring cells
     neighbouring_cells = neighbourhood(x,y,diffusion_degree)
     neighbour_values = []
 
-    #record neighbouring cells' values, as well as maxima/minima
+    # record neighbouring cells' values, as well as maxima/minima
     for neighbour in neighbouring_cells:
         neighbour_values.append(in_raster[neighbour])
-
-
 
     # calculate indices for neighbouring cells
     neighs = []
@@ -322,42 +326,28 @@ def decider_diffusion_temp(in_raster, temporary_raster, x, y, diffusion_index, d
 
         neighs.append((x_temp, y_temp))
 
-
-    #get how many are legal (within bounds)
+    # get how many are legal (within bounds)
     division = len(neighs)
     diff = pixel - (pixel * diffusion_index)
 
-    #check that a double minus is not converted to plus
+    # check that a double minus is not converted to plus
     if diff < 0 and temporary_raster[x, y] <0:
         temporary_raster[x,y] += diff
     else:
         temporary_raster[x,y] -= diff
 
-    #diffuse
+    # diffuse
     for neigh in neighs:
 
         try:
-            #if index of target cell is in bounds, add diffusion value
+            # if index of target cell is in bounds, add diffusion value
             temporary_raster[neigh[0], neigh[1]] += diff/division
 
-            # subtract diffusion value from original raster
-
-
         except:
-            #print("pixel outta bounds 3")
+            # print("pixel outta bounds 3")
             pass
 
-
     return temporary_raster
-
-def maxCounter(list):
-
-    count = list.count(max(list))
-    return count
-
-def minCounter(list):
-    count = list.count(min(list))
-    return count
 
 def neighbourhood(x,y,degree):
     """finds surrounding pixel of the input pixel"""
@@ -376,29 +366,16 @@ def neighbourhood(x,y,degree):
             index_rel_a = y-a
             index_rel_b = x-b
 
-            try:
-
+            # establish radial diffusion
+            if index_rel_a == index_rel_b and abs(index_rel_a) == degree:
+                pass
+            else:
                 neighbours.append((index_rel_a,index_rel_b))
-
-
-
-            except IndexError:
-                print("meh")
-
 
             b += 1
         a += 1
 
     return neighbours
-
-def unpad(x, pad_width):
-    slices = []
-    for c in pad_width:
-        e = None if c[1] == 0 else -c[1]
-        slices.append(slice(c[0], e))
-    return x[tuple(slices)]
-
-
 
 #---------------------------------------------------------
 #                       GIF CONVERSION
@@ -415,3 +392,5 @@ def makeGif(mode,out_rasters,gif_duration):
         print(out_rasters)
     else:
         pass
+
+#---------------------------------------------------------

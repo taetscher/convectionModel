@@ -1,5 +1,3 @@
-import matplotlib.pyplot as plt
-import imageio
 from convectionModel.physics import *
 
 
@@ -12,9 +10,9 @@ from convectionModel.physics import *
 
 
 # raster size and timesteps
-resX = 200
+resX = 10
 resY = resX
-timesteps = 50
+timesteps = 5
 container_temp = -10
 
 # fill temperature and height of pre-filled liquid as well as energy lost to the exterior of the system
@@ -22,12 +20,12 @@ pre_fill = True
 fill_temp = 40
 filling_height = 0.75
 diffusion_index = 0.3
-diffusion_degree = 5
+diffusion_degree = int((resX/10)+1)
 loss_over_time = 0
 
 # set up list to convert output to gif r
-gif_output = True
-gif_duration = 0.5 #second(s)
+gif_output = False
+gif_duration = 1 #second(s)
 
 
 #set up iteration
@@ -40,18 +38,13 @@ print("Initializing the system...\n")
 plt.ioff()
 
 t = 0
-
 in_raster = np.random.random(size=(resX,resY))
 
+
+# do the simulation
 out_rasters = timestepper(t,timesteps, in_raster, container_temp, filling_height, fill_temp, diffusion_index, loss_over_time, diffusion_degree)
 
+# make the gif from the outputs
+makeGif(mode=gif_output, out_rasters=out_rasters, gif_duration=gif_duration)
 
-# create gif from individual timesteps
-print("creating .gif...")
-images = []
-
-#for raster in out_rasters:
-    #images.append(imageio.imread(raster))
-    #imageio.mimsave('gifs/convection.gif', images, duration=gif_duration)
-print(out_rasters)
 print("done")

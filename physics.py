@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import imageio
 
 def plotter(filepath, raster, upper, lower, t):
     ''' plots input raster'''
@@ -397,3 +398,20 @@ def unpad(x, pad_width):
         slices.append(slice(c[0], e))
     return x[tuple(slices)]
 
+
+
+#---------------------------------------------------------
+#                       GIF CONVERSION
+
+def makeGif(mode,out_rasters,gif_duration):
+    # create gif from individual timesteps
+    if mode == True:
+        print("creating .gif...")
+        images = []
+
+        for raster in out_rasters:
+            images.append(imageio.imread(raster))
+            imageio.mimsave('gifs/convection.gif', images, duration=gif_duration)
+        print(out_rasters)
+    else:
+        pass

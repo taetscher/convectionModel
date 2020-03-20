@@ -12,7 +12,7 @@ from convectionModel.physics import *
 
 
 # raster size and timesteps
-resX = 100
+resX = 200
 resY = resX
 timesteps = 50
 container_temp = -10
@@ -21,11 +21,12 @@ container_temp = -10
 pre_fill = True
 fill_temp = 40
 filling_height = 0.75
-diffusion_index = 0.005
-diffusion_degree = 3
+diffusion_index = 0.3
+diffusion_degree = 5
 loss_over_time = 0
 
 # set up list to convert output to gif r
+gif_output = True
 gif_duration = 0.5 #second(s)
 
 

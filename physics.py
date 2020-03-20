@@ -253,18 +253,24 @@ def diffusion(in_raster, resX, resY, diffusion_index, container_temp, loss_over_
 
     #set up a temporary raster to allow for energy transfer and pad the array to account for external influence
     temporary_raster = np.zeros(shape=(resX,resY))
-    #temporary_raster[1:-1, 1:-1] = 0
-    #temporary_raster[-1] = container_temp
+
+    #pad the raster to prevent overflow (pad width = diffusion_degree+1)
+    padding = diffusion_degree
+    temporary_raster = np.pad(temporary_raster,((padding,padding),(padding,padding)),mode='wrap')
+    in_raster = np.pad(in_raster, ((padding, padding), (padding, padding)), mode='wrap')
+    resY = np.shape(temporary_raster)[1]
+    resX = np.shape(temporary_raster)[0]
+
 
 
     #loop through and calculate energy transfer per cell
-    y = 0
+    y = padding
     #loop through rows
-    while y < resX:
+    while y < resY-padding :
 
-        x = 0
+        x = padding
         #loop through columns
-        while x < resY:
+        while x < resX-padding :
 
             decider_diffusion_temp(in_raster,temporary_raster,x,y, diffusion_index, diffusion_degree)
 
@@ -273,9 +279,16 @@ def diffusion(in_raster, resX, resY, diffusion_index, container_temp, loss_over_
 
         y+=1
 
+    #unpad the raster to regain its beauty [ymin,ymax][xmin,xmax]
+    temporary_raster = temporary_raster[diffusion_degree:-diffusion_degree, diffusion_degree:-diffusion_degree]
+    in_raster = in_raster[diffusion_degree:-diffusion_degree, diffusion_degree:-diffusion_degree]
+
     # add in_raster to temporary raster to compute diffusion of energy
     temporary_raster = np.add(in_raster, temporary_raster)
 
+    # simulate cooling of the container at each timestep
+    resY = np.shape(temporary_raster)[1]
+    resX = np.shape(temporary_raster)[0]
     cooling = coolingRaster(resX, resY, container_temp)
     temporary_raster = np.add(temporary_raster, cooling)
 
@@ -351,11 +364,11 @@ def neighbourhood(x,y,degree):
     neighbours = []
 
     # loop through rows
-    a = y - degree
+    a = y - degree + 1
     while a < y + degree :
 
         # loop through columns
-        b = x - degree
+        b = x - degree + 1
         while b < x + degree:
 
 
@@ -376,3 +389,11 @@ def neighbourhood(x,y,degree):
         a += 1
 
     return neighbours
+
+def unpad(x, pad_width):
+    slices = []
+    for c in pad_width:
+        e = None if c[1] == 0 else -c[1]
+        slices.append(slice(c[0], e))
+    return x[tuple(slices)]
+

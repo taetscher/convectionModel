@@ -37,7 +37,7 @@ def timestepper(t,timesteps, in_raster, container_temp, filling_height, fill_tem
             raster = environmental(resX,resY)
 
             # add a container
-            container = addContainer(raster,container_temp)
+            container = addContainer(raster,10)
 
             # fill the container with liquid
             raster = containerPreFill(container,raster,resX,resY,filling_height=filling_height,fill_temp=fill_temp)
@@ -142,57 +142,31 @@ def addContainer(raster, container_temp):
 
     return container
 
-def coolingRaster(resX, resY, container_temp):
+def coolingContainer(temp_ras,container_temp):
 
     '''Creates a layer with only the cooling container information, can be added to other rasters to simulate cooling the container'''
 
-    #add container to raster
-    color_value=container_temp
-
     #get dimensions from raster
-    x_dim = resX
-    y_dim = resY
-
-    raster = np.zeros(shape=(resX,resY))
-
-    #print("dimensions: {},{}".format(x_dim,y_dim))
-
+    x_dim = np.shape(temp_ras)[0]
+    y_dim = np.shape(temp_ras)[1]
 
     # define container width and height
     container_width = x_dim / 2
     container_height = y_dim/2
 
-    # set coordinates of container corners
+    # get coordinates of container corners
     container_bl = [int(container_width/2),0]
     container_br = [int(container_bl[0])+int(container_width),0]
     container_tl = [int(container_width/2),(int(container_height))]
     container_tr = [int(container_bl[0])+int(container_width),int(container_height)]
 
-    #print("Corners:\ntl: {}\nbl: {}\ntr: {}\nbr: {}".format(container_tl,container_bl,container_tr,container_br))
+    # set container temperature
+    temp_ras[container_tl[1]:,container_tl[0]]=container_temp
+    temp_ras[container_tr[1]:, container_tr[0]] = container_temp
+    temp_ras[y_dim-1:, container_bl[0]:container_br[0]] = container_temp
 
 
-    # create bottom of container
-    col_cont_bl = container_bl[0]
-    col_cont_br = container_br[0]
-
-    # get rows/cols of edges of container
-    bottomrow_index = y_dim - 1
-    bottomedge_row = raster[-1,:]
-    leftedge_col = raster[:,container_tl[0]]
-    rightedge_col = raster[:,container_tr[0]]
-
-    #set edges of container to be values to 10
-    np.put(bottomedge_row, [range(container_bl[0], container_br[0]+1)],v=color_value)
-    np.put(leftedge_col, [range(container_tl[1], bottomrow_index)], v=color_value)
-    np.put(rightedge_col, [range(container_tr[1], bottomrow_index)], v=color_value)
-
-    #ooutput container information to pass to other functions
-    container = {'container_bl': container_bl,
-                 'container_tl':container_tl,
-                 'container_br':container_br,
-                 'container_tr':container_tr}
-
-    return raster
+    return temp_ras
 
 def containerPreFill(container, raster, resX, resY, filling_height, fill_temp):
 
@@ -273,7 +247,7 @@ def diffusion(in_raster, resX, resY, diffusion_index, container_temp, loss_over_
         # simulate cooling of the container at each timestep
         resY = np.shape(temporary_raster)[1]
         resX = np.shape(temporary_raster)[0]
-        cooling = coolingRaster(resX, resY, container_temp)
+        cooling = coolingContainer(temporary_raster,container_temp)
         temporary_raster = np.add(temporary_raster, cooling)
 
     # pad the raster to prevent overflow (pad width = diffusion_degree+1)

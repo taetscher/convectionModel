@@ -6,12 +6,25 @@ import math
 #---------------------------------------------------------
 #                       SETUP STUFF
 
-def plotter(filepath, raster, upper, lower, t):
+def plotter(filepath, raster, upper, lower, t,container_temp,fill_temp,diffusion_index,diffusion_degree,timesteps):
     ''' plots input raster'''
+
+    ext_x = np.shape(raster)[0]
+    ext_y = np.shape(raster)[1]
+
+    params = "Parameters used:\n " \
+             "Container Temperature: {}°C\n" \
+             "Fill Temperature: {}°C\n" \
+             "Diffusion per Timestep: {}%\n" \
+             "Diffusion Degree: {} pixels\n" \
+             "Timesteps: {}\n\n" \
+             "Author: Benjamin Schuepbach\n" \
+             "github.com/taetscher".format(container_temp,fill_temp,diffusion_index*100,diffusion_degree,timesteps)
 
     plt.imshow(raster, cmap='inferno')
     plt.title("timestep: {}".format(t))
-    plt.colorbar()
+    plt.text(ext_x/2, ext_y/5, params,color='black',horizontalalignment='center', verticalalignment='center',bbox=dict(facecolor='white', alpha=0.5))
+    plt.colorbar(label='Temperature (°C)')
     plt.clim(lower, upper)
     plt.savefig(filepath)
     plt.close('all')
@@ -43,7 +56,7 @@ def timestepper(t,timesteps, in_raster, container_temp, filling_height, fill_tem
             raster = containerPreFill(container,raster,resX,resY,filling_height=filling_height,fill_temp=fill_temp)
 
             # save figure
-            plotter(filepath,raster,upper,lower,t)
+            plotter(filepath,raster,upper,lower,t,container_temp,fill_temp,diffusion_index,diffusion_degree,timesteps)
 
         else:
             print("Calculating diffusion at step {}...".format(t))
@@ -53,7 +66,7 @@ def timestepper(t,timesteps, in_raster, container_temp, filling_height, fill_tem
 
 
             # save figure
-            plotter(filepath,raster,upper,lower,t)
+            plotter(filepath,raster,upper,lower,t,container_temp,fill_temp,diffusion_index,diffusion_degree,timesteps)
 
         out_rasters.append(filepath)
         t += 1
@@ -245,8 +258,6 @@ def diffusion(in_raster, resX, resY, diffusion_index, container_temp, loss_over_
         pass
     else:
         # simulate cooling of the container at each timestep
-        resY = np.shape(temporary_raster)[1]
-        resX = np.shape(temporary_raster)[0]
         cooling = coolingContainer(temporary_raster,container_temp)
         temporary_raster = np.add(temporary_raster, cooling)
 
@@ -254,6 +265,8 @@ def diffusion(in_raster, resX, resY, diffusion_index, container_temp, loss_over_
     padding = diffusion_degree + diffusion_degree
     temporary_raster = np.pad(temporary_raster,((padding,padding),(padding,padding)),mode='maximum')
     in_raster = np.pad(in_raster, ((padding, padding), (padding, padding)), mode='empty')
+
+    # set new dimensions after pad
     resY = np.shape(temporary_raster)[1]
     resX = np.shape(temporary_raster)[0]
 
@@ -324,16 +337,14 @@ def decider_diffusion_temp(in_raster, temporary_raster, x, y, diffusion_index, d
                 temporary_raster[neigh[0], neigh[1]] -= diff/division
 
 
-            if diff < 0 and in_raster[x, y] < 0:
-                in_raster[x, y] += diff/division
-            else:
-                in_raster[x, y] -= diff/division
+
 
 
         except:
             # print("pixel outta bounds 3")
             pass
 
+    in_raster[x, y] -= diff
 
 
     return temporary_raster
@@ -366,7 +377,12 @@ def neighbourhood(x,y,degree):
 #                       GIF CONVERSION
 
 def makeGif(mode,out_rasters,gif_duration):
-    # create gif from individual timesteps
+    '''create gif from individual timesteps
+
+    mode == Do you want to export a gif or no (True/False)
+    out_rasters == list of images to combine in gif
+    duration == duration of each tick while playing the gif (seconds)'''
+
     if mode == True:
         print("creating .gif...")
         images = []

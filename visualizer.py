@@ -8,17 +8,17 @@ from convectionModel.physics import *
     Date: 15.03.2020"""
 
 # raster size and timesteps
-resX = 50
+resX = 40
 resY = resX
-timesteps = 50
-container_temp = 40
+timesteps = 150
+container_temp = -10
 
 # fill temperature and height of pre-filled liquid as well as energy lost to the exterior of the system
 pre_fill = True
-fill_temp = -10
+fill_temp = 40
 filling_height = 0.75
-diffusion_index = 0.9
-diffusion_degree = int((resX/4)+1)
+diffusion_index = 0.20 #how much of the total energy of a pixel is deffused at each time step
+diffusion_degree = int(resX/6)
 loss_over_time = 0
 
 # set up list to convert output to gif r

@@ -24,8 +24,8 @@ def timestepper(t,timesteps, in_raster, container_temp, filling_height, fill_tem
     resX = in_raster.shape[0]
     resY = in_raster.shape[1]
     out_rasters = []
-    upper = 40
-    lower = -10
+    upper = max(container_temp,fill_temp)+10
+    lower = min(container_temp,fill_temp)-10
 
     while t < timesteps+1:
         # define where to save to
@@ -79,6 +79,13 @@ def abs(x):
     n = math.sqrt(x ** 2)
     return abs(type(x)(n))
 
+def radial(a, b, index_a, index_b, degree):
+    '''checks if a pixel belongs to a group of pixel which need to be removed in order to make radial diffusion happen'''
+
+    if 1 == 1:
+        return True
+    else:
+        return False
 #---------------------------------------------------------
 #                       CONTAINER STUFF
 
@@ -257,9 +264,17 @@ def diffusion(in_raster, resX, resY, diffusion_index, container_temp, loss_over_
 
     - based on input raster with temperatures """
 
-
     # set up a temporary raster to allow for energy transfer and pad the array to account for external influence
     temporary_raster = np.zeros(shape=(resX,resY))
+
+    if iteration == 0:
+        pass
+    else:
+        # simulate cooling of the container at each timestep
+        resY = np.shape(temporary_raster)[1]
+        resX = np.shape(temporary_raster)[0]
+        cooling = coolingRaster(resX, resY, container_temp)
+        temporary_raster = np.add(temporary_raster, cooling)
 
     # pad the raster to prevent overflow (pad width = diffusion_degree+1)
     padding = diffusion_degree + diffusion_degree
@@ -293,13 +308,6 @@ def diffusion(in_raster, resX, resY, diffusion_index, container_temp, loss_over_
     # add in_raster to temporary raster to compute diffusion of energy
     temporary_raster = np.add(in_raster, temporary_raster)
 
-    # simulate cooling of the container at each timestep
-    resY = np.shape(temporary_raster)[1]
-    resX = np.shape(temporary_raster)[0]
-    cooling = coolingRaster(resX, resY, container_temp)
-    temporary_raster = np.add(temporary_raster, cooling)
-
-
     return temporary_raster
 
 def decider_diffusion_temp(in_raster, temporary_raster, x, y, diffusion_index, diffusion_degree):
@@ -307,17 +315,16 @@ def decider_diffusion_temp(in_raster, temporary_raster, x, y, diffusion_index, d
 
     # locate the pixel the decider is assessing (x = columns, y=rows)!
     pixel = in_raster[x, y]
-    res = np.shape(in_raster)[0]
 
-    # set up to record neighbouring cells
+    # calculate and store relative indices of neighbouring cells
     neighbouring_cells = neighbourhood(x,y,diffusion_degree)
     neighbour_values = []
 
-    # record neighbouring cells' values, as well as maxima/minima
+    # record neighbouring cells' values
     for neighbour in neighbouring_cells:
         neighbour_values.append(in_raster[neighbour])
 
-    # calculate indices for neighbouring cells
+    # calculate absolute indices for neighbouring cells
     neighs = []
     for neighbour in neighbouring_cells:
 
@@ -328,24 +335,32 @@ def decider_diffusion_temp(in_raster, temporary_raster, x, y, diffusion_index, d
 
     # get how many are legal (within bounds)
     division = len(neighs)
-    diff = pixel - (pixel * diffusion_index)
+    diff = pixel*diffusion_index
 
-    # check that a double minus is not converted to plus
-    if diff < 0 and temporary_raster[x, y] <0:
-        temporary_raster[x,y] += diff
-    else:
-        temporary_raster[x,y] -= diff
+
 
     # diffuse
     for neigh in neighs:
 
         try:
-            # if index of target cell is in bounds, add diffusion value
-            temporary_raster[neigh[0], neigh[1]] += diff/division
+            # check that a double minus is not converted to plus
+            if diff < 0 and temporary_raster[x, y] < 0:
+                temporary_raster[neigh[0], neigh[1]] += diff/division
+            else:
+                temporary_raster[neigh[0], neigh[1]] -= diff/division
+
+
+            if diff < 0 and in_raster[x, y] < 0:
+                in_raster[x, y] += diff/division
+            else:
+                in_raster[x, y] -= diff/division
+
 
         except:
             # print("pixel outta bounds 3")
             pass
+
+
 
     return temporary_raster
 
@@ -366,11 +381,7 @@ def neighbourhood(x,y,degree):
             index_rel_a = y-a
             index_rel_b = x-b
 
-            # establish radial diffusion
-            if index_rel_a == index_rel_b and abs(index_rel_a) == degree:
-                pass
-            else:
-                neighbours.append((index_rel_a,index_rel_b))
+            neighbours.append((index_rel_a,index_rel_b))
 
             b += 1
         a += 1

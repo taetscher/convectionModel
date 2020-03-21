@@ -23,8 +23,9 @@ def plotter(filepath, raster, upper, lower, t,container_temp,fill_temp,diffusion
 
     plt.imshow(raster, cmap='inferno')
     plt.title("timestep: {}".format(t))
+    plt.axis('off')
     plt.text(ext_x/2, ext_y/5, params,color='black',horizontalalignment='center', verticalalignment='center',bbox=dict(facecolor='white', alpha=0.5))
-    plt.colorbar(label='Temperature (°C)')
+    plt.colorbar(label='Temperature (°C)', drawedges=False)
     plt.clim(lower, upper)
     plt.savefig(filepath)
     plt.close('all')
@@ -37,7 +38,7 @@ def timestepper(t,timesteps, in_raster, container_temp, filling_height, fill_tem
     resX = in_raster.shape[0]
     resY = in_raster.shape[1]
     out_rasters = []
-    upper = max(container_temp,fill_temp)+10
+    upper = max(container_temp,fill_temp)-20
     lower = min(container_temp,fill_temp)-10
 
     while t < timesteps+1:
@@ -48,12 +49,11 @@ def timestepper(t,timesteps, in_raster, container_temp, filling_height, fill_tem
 
             # set up initial system state
             raster = environmental(resX,resY)
+            container = addContainer(raster, container_temp)
+            containerPreFill(container, raster, resX, resY, filling_height, fill_temp)
 
-            # add a container
-            container = addContainer(raster,10)
-
-            # fill the container with liquid
-            raster = containerPreFill(container,raster,resX,resY,filling_height=filling_height,fill_temp=fill_temp)
+            # cool the container this is not actually redundant, more like a hotfix
+            raster = coolingContainer(raster,container_temp)
 
             # save figure
             plotter(filepath,raster,upper,lower,t,container_temp,fill_temp,diffusion_index,diffusion_degree,timesteps)
@@ -87,6 +87,7 @@ def environmental(resX,resY):
     return temperature_raster
 
 def abs(x):
+    """returns the absolute value of x"""
     if x >= 0:
         return x
     n = math.sqrt(x ** 2)
@@ -96,6 +97,13 @@ def radial(a, b, index_a, index_b, degree):
     '''checks if a pixel belongs to a group of pixel which need to be removed in order to make radial diffusion happen'''
 
     if 1 == 1:
+        return True
+    else:
+        return False
+
+def even(x):
+    '''checks if a number is even, returns True for even numbers and False for odd numbers'''
+    if (x % 2) == 0:
         return True
     else:
         return False
@@ -157,7 +165,7 @@ def addContainer(raster, container_temp):
 
 def coolingContainer(temp_ras,container_temp):
 
-    '''Creates a layer with only the cooling container information, can be added to other rasters to simulate cooling the container'''
+    '''Simulates cooling of container by over-writing temperature values of container'''
 
     #get dimensions from raster
     x_dim = np.shape(temp_ras)[0]
@@ -192,7 +200,6 @@ def containerPreFill(container, raster, resX, resY, filling_height, fill_temp):
 
     # Make sure a container can actually be filled
     if resX < 8:
-        print("Could not add pre-fill, raster resolution must be 8x8 or greater")
         raise ValueError('Raster resolution too small. Change resolution to at least 8x8 pixels.')
 
 
@@ -254,36 +261,41 @@ def diffusion(in_raster, resX, resY, diffusion_index, container_temp, loss_over_
     # set up a temporary raster to allow for energy transfer and pad the array to account for external influence
     temporary_raster = np.zeros(shape=(resX,resY))
 
-    if iteration == 0:
-        pass
-    else:
-        # simulate cooling of the container at each timestep
-        cooling = coolingContainer(temporary_raster,container_temp)
-        temporary_raster = np.add(temporary_raster, cooling)
+
+    # simulate cooling of the container at each timestep
+    temporary_raster = coolingContainer(temporary_raster,container_temp)
 
     # pad the raster to prevent overflow (pad width = diffusion_degree+1)
     padding = diffusion_degree + diffusion_degree
-    temporary_raster = np.pad(temporary_raster,((padding,padding),(padding,padding)),mode='maximum')
-    in_raster = np.pad(in_raster, ((padding, padding), (padding, padding)), mode='empty')
+    temporary_raster = np.pad(temporary_raster,((padding,padding), (padding,padding)), constant_values=20)
+    in_raster = np.pad(in_raster, ((padding,padding), (padding,padding)), constant_values=20)
 
     # set new dimensions after pad
     resY = np.shape(temporary_raster)[1]
     resX = np.shape(temporary_raster)[0]
-
-
 
     # loop through and calculate energy transfer per cell
     y = padding
     # loop through rows
     while y < resY-padding :
 
-        x = padding
-        # loop through columns
-        while x < resX-padding :
+        # loop either from left to right or right to left in order to avoid drift effects
+        if even(y):
+            x = padding
+            # loop from left to right
+            while x < resX - padding:
+                decider_diffusion_temp(in_raster, temporary_raster, x, y, diffusion_index, diffusion_degree)
 
-            decider_diffusion_temp(in_raster,temporary_raster,x,y, diffusion_index, diffusion_degree)
+                x += 1
 
-            x+=1
+        else:
+            x = resX - padding
+            # loop from right to left
+            while x > 0 + padding:
+                decider_diffusion_temp(in_raster, temporary_raster, x, y, diffusion_index, diffusion_degree)
+
+                x -= 1
+
 
 
         y+=1
@@ -333,42 +345,65 @@ def decider_diffusion_temp(in_raster, temporary_raster, x, y, diffusion_index, d
             # check that a double minus is not converted to plus
             if diff < 0 and temporary_raster[x, y] < 0:
                 temporary_raster[neigh[0], neigh[1]] += diff/division
+
             else:
                 temporary_raster[neigh[0], neigh[1]] -= diff/division
-
-
-
-
 
         except:
             # print("pixel outta bounds 3")
             pass
 
-    in_raster[x, y] -= diff
+    # account for energy leaving the origin cell
+    # avoid double minus meaning plus
+    if diff < 0 and in_raster[x,y] < 0:
+        in_raster[x,y] += diff
+    else:
+        in_raster[x,y] -= diff
+
 
 
     return temporary_raster
 
 def neighbourhood(x,y,degree):
-    """finds surrounding pixel of the input pixel"""
+    """finds surrounding pixel of the input pixel
+
+    alternates between looping from minimum->maximum and maximum->minimum in order to eliminate sideways drift over time
+    """
 
     neighbours = []
 
-    # loop through rows
-    a = y - degree + 1
-    while a < y + degree :
+    # account (rudimentarily) for downward convection of cold air
+    convect = degree+2
+
+    # loop through rows, but
+    a = y - convect
+    while a < y + degree:
 
         # loop through columns
-        b = x - degree + 1
-        while b < x + degree:
+        if even(a):
 
+            # if on an even column, loop row from left to right
+            b = x - degree
+            while b < x + degree:
 
-            index_rel_a = y-a
-            index_rel_b = x-b
+                index_rel_a = y - a
+                index_rel_b = x - b
 
-            neighbours.append((index_rel_a,index_rel_b))
+                neighbours.append((index_rel_a, index_rel_b))
 
-            b += 1
+                b += 1
+        else:
+            # if on an even column, loop row from left to right
+            b = x + degree
+            while b > x - degree:
+
+                index_rel_a = y - a
+                index_rel_b = x - b
+
+                neighbours.append((index_rel_a, index_rel_b))
+
+                b -= 1
+
         a += 1
 
     return neighbours
@@ -376,7 +411,7 @@ def neighbourhood(x,y,degree):
 #---------------------------------------------------------
 #                       GIF CONVERSION
 
-def makeGif(mode,out_rasters,gif_duration):
+def makeGif(mode, out_rasters, gif_duration, save_to_path='gifs/convection.gif'):
     '''create gif from individual timesteps
 
     mode == Do you want to export a gif or no (True/False)
@@ -389,8 +424,8 @@ def makeGif(mode,out_rasters,gif_duration):
 
         for raster in out_rasters:
             images.append(imageio.imread(raster))
-            imageio.mimsave('gifs/convection.gif', images, duration=gif_duration)
-        print(out_rasters)
+            imageio.mimsave(save_to_path, images, duration=gif_duration)
+
     else:
         pass
 

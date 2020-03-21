@@ -39,7 +39,7 @@ def timestepper(t,timesteps, in_raster, container_temp, filling_height, fill_tem
     resY = in_raster.shape[1]
     out_rasters = []
     upper = max(container_temp,fill_temp)-20
-    lower = min(container_temp,fill_temp)-10
+    lower = min(container_temp,fill_temp)
 
     while t < timesteps+1:
         # define where to save to
@@ -62,7 +62,7 @@ def timestepper(t,timesteps, in_raster, container_temp, filling_height, fill_tem
             print("Calculating diffusion at step {}...".format(t))
 
             # calculate temperature diffusion
-            raster = diffusion(raster, resX, resY, diffusion_index, container_temp, loss_over_time, t, diffusion_degree)
+            raster = diffusion(raster, resX, resY, diffusion_index, container_temp, loss_over_time, t, diffusion_degree,fill_temp)
 
 
             # save figure
@@ -242,16 +242,10 @@ def containerPreFill(container, raster, resX, resY, filling_height, fill_temp):
         # output raster with pre-filled container
         return raster
 
-def containerFill(container, temperature=20):
-
-    '''fills a container with a liquid at specified temperature (degrees celsius). pours from pixel at (x=xmax*0.5,y=0)'''
-
-    pass
-
 #---------------------------------------------------------
 #                       PHYSICS STUFF
 
-def diffusion(in_raster, resX, resY, diffusion_index, container_temp, loss_over_time, iteration, diffusion_degree):
+def diffusion(in_raster, resX, resY, diffusion_index, container_temp, loss_over_time, iteration, diffusion_degree, fill_temp):
 
     """Calculates how much the liquid rises and diffuses energy
     because of its temperature.
@@ -267,8 +261,8 @@ def diffusion(in_raster, resX, resY, diffusion_index, container_temp, loss_over_
 
     # pad the raster to prevent overflow (pad width = diffusion_degree+1)
     padding = diffusion_degree + diffusion_degree
-    temporary_raster = np.pad(temporary_raster,((padding,padding), (padding,padding)), constant_values=20)
-    in_raster = np.pad(in_raster, ((padding,padding), (padding,padding)), constant_values=20)
+    temporary_raster = np.pad(temporary_raster,((padding,padding), (padding,padding)), constant_values=200)
+    in_raster = np.pad(in_raster, ((padding,padding), (padding,padding)), constant_values=200)
 
     # set new dimensions after pad
     resY = np.shape(temporary_raster)[1]
@@ -303,6 +297,9 @@ def diffusion(in_raster, resX, resY, diffusion_index, container_temp, loss_over_
     # unpad the raster to regain its beauty [ymin,ymax][xmin,xmax]
     temporary_raster = temporary_raster[padding:-padding, padding:-padding]
     in_raster = in_raster[padding:-padding, padding:-padding]
+
+    # clip the max/min values in order to avoid creating energy out of nothing
+    temporary_raster = np.clip(temporary_raster,container_temp,fill_temp)
 
     # add in_raster to temporary raster to compute diffusion of energy
     temporary_raster = np.add(in_raster, temporary_raster)
@@ -372,11 +369,9 @@ def neighbourhood(x,y,degree):
 
     neighbours = []
 
-    # account (rudimentarily) for downward convection of cold air
-    convect = degree+2
+    # loop through rows
+    a = y - degree
 
-    # loop through rows, but
-    a = y - convect
     while a < y + degree:
 
         # loop through columns

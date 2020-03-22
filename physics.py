@@ -38,7 +38,7 @@ def timestepper(t,timesteps, in_raster, container_temp, filling_height, fill_tem
     resX = in_raster.shape[0]
     resY = in_raster.shape[1]
     out_rasters = []
-    upper = max(container_temp,fill_temp)-20
+    upper = max(container_temp,fill_temp)-30
     lower = min(container_temp,fill_temp)
 
     while t < timesteps+1:
@@ -93,13 +93,19 @@ def abs(x):
     n = math.sqrt(x ** 2)
     return abs(type(x)(n))
 
-def radial(a, b, index_a, index_b, degree):
+def radial_remove(neighbouring_cells, degree):
     '''checks if a pixel belongs to a group of pixel which need to be removed in order to make radial diffusion happen'''
 
-    if 1 == 1:
-        return True
-    else:
-        return False
+
+    for neighbour in neighbouring_cells:
+
+        if abs(neighbour[0]) == degree and abs(neighbour[1]) == degree:
+            neighbouring_cells.remove(neighbour)
+        else:
+            pass
+        #print(neighbour)
+
+    return neighbouring_cells
 
 def even(x):
     '''checks if a number is even, returns True for even numbers and False for odd numbers'''
@@ -255,7 +261,6 @@ def diffusion(in_raster, resX, resY, diffusion_index, container_temp, loss_over_
     # set up a temporary raster to allow for energy transfer and pad the array to account for external influence
     temporary_raster = np.zeros(shape=(resX,resY))
 
-
     # simulate cooling of the container at each timestep
     temporary_raster = coolingContainer(temporary_raster,container_temp)
 
@@ -312,9 +317,12 @@ def decider_diffusion_temp(in_raster, temporary_raster, x, y, diffusion_index, d
     # locate the pixel the decider is assessing (x = columns, y=rows)!
     pixel = in_raster[x, y]
 
-    # calculate and store relative indices of neighbouring cells
+    # calculate and store relative indices of neighbouring cells, remove duplicates
     neighbouring_cells = neighbourhood(x,y,diffusion_degree)
     neighbour_values = []
+
+    # remove indices according to radial settings to achieve pseudo-radial diffusion
+    radial_remove(neighbouring_cells,diffusion_degree)
 
     # record neighbouring cells' values
     for neighbour in neighbouring_cells:
@@ -329,11 +337,9 @@ def decider_diffusion_temp(in_raster, temporary_raster, x, y, diffusion_index, d
 
         neighs.append((x_temp, y_temp))
 
-    # get how many are legal (within bounds)
+    # define how much to diffuse in total
     division = len(neighs)
     diff = pixel*diffusion_index
-
-
 
     # diffuse
     for neigh in neighs:
@@ -341,13 +347,13 @@ def decider_diffusion_temp(in_raster, temporary_raster, x, y, diffusion_index, d
         try:
             # check that a double minus is not converted to plus
             if diff < 0 and temporary_raster[x, y] < 0:
-                temporary_raster[neigh[0], neigh[1]] += diff/division
+                temporary_raster[neigh[0], neigh[1]] += diff/division  #diff_amount(neigh[0],neigh[1],diff,diffusion_degree)
 
             else:
                 temporary_raster[neigh[0], neigh[1]] -= diff/division
 
         except:
-            # print("pixel outta bounds 3")
+            #print("whoops")
             pass
 
     # account for energy leaving the origin cell
@@ -402,6 +408,27 @@ def neighbourhood(x,y,degree):
         a += 1
 
     return neighbours
+
+def diff_amount(x,y,diff,degree):
+    '''returns the specific amount to be diffused to pixels of different distances'''
+
+    xx = abs(x)
+    yy = abs(y)
+
+    for deg in range(0,degree+1):
+
+        if xx == deg or yy == deg:
+
+            # calculate the amount of pixels in vicinity of degree 'deg'
+            neigh_deg = 8*(2**deg-1)
+
+            # calculate percentage of total diff to diffisue into this vicinity
+            diff_amount = (diff * (0.5/deg))/neigh_deg
+
+            # stop if you found out in which vicinity the pixels lie
+
+            return diff_amount
+
 
 #---------------------------------------------------------
 #                       GIF CONVERSION

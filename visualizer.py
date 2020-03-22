@@ -8,7 +8,7 @@ from convectionModel.physics import *
     Date: 15.03.2020"""
 
 # raster size and timesteps
-resX = 60
+resX = 200
 resY = resX
 timesteps = 400
 container_temp = -10
@@ -17,12 +17,12 @@ container_temp = -10
 pre_fill = True
 fill_temp = 40
 filling_height = 0.6
-diffusion_index = 0.2 #how much of the total energy of a pixel is deffused at each time step (range between 0-1)
-diffusion_degree = 6#int(resX/10)
+diffusion_index = 0.01 #how much of the total energy of a pixel is deffused at each time step (range between 0-1)
+diffusion_degree = int(resX/10)
 loss_over_time = 0
 
 # set up list to convert output to gif r
-gif_output = False
+gif_output = True
 gif_duration = 0.1 #second(s)
 
 # set up iteration

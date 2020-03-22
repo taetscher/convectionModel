@@ -328,6 +328,10 @@ def decider_diffusion_temp(in_raster, temporary_raster, x, y, diffusion_index, d
     for neighbour in neighbouring_cells:
         neighbour_values.append(in_raster[neighbour])
 
+    # define how much to diffuse in total
+    #division = len(neighs)
+    diff = pixel * diffusion_index
+
     # calculate absolute indices for neighbouring cells
     neighs = []
     for neighbour in neighbouring_cells:
@@ -335,11 +339,11 @@ def decider_diffusion_temp(in_raster, temporary_raster, x, y, diffusion_index, d
         x_temp = x + neighbour[0]
         y_temp = y + neighbour[1]
 
-        neighs.append((x_temp, y_temp))
+        deg = diff_amount(neighbour[0],neighbour[1],diff,diffusion_degree)
 
-    # define how much to diffuse in total
-    division = len(neighs)
-    diff = pixel*diffusion_index
+        neighs.append((x_temp, y_temp, deg))
+
+
 
     # diffuse
     for neigh in neighs:
@@ -347,10 +351,12 @@ def decider_diffusion_temp(in_raster, temporary_raster, x, y, diffusion_index, d
         try:
             # check that a double minus is not converted to plus
             if diff < 0 and temporary_raster[x, y] < 0:
-                temporary_raster[neigh[0], neigh[1]] += diff/division  #diff_amount(neigh[0],neigh[1],diff,diffusion_degree)
+                temporary_raster[neigh[0], neigh[1]] += neigh[2]
+
 
             else:
-                temporary_raster[neigh[0], neigh[1]] -= diff/division
+                temporary_raster[neigh[0], neigh[1]] -= neigh[2]
+
 
         except:
             #print("whoops")
@@ -409,25 +415,29 @@ def neighbourhood(x,y,degree):
 
     return neighbours
 
-def diff_amount(x,y,diff,degree):
+def diff_amount(x,y,diff,diffusion_degree):
     '''returns the specific amount to be diffused to pixels of different distances'''
 
+    # convert both indices to positive numbers for easy calculation
     xx = abs(x)
     yy = abs(y)
 
-    for deg in range(0,degree+1):
 
+    # check in which degree of neighbourhood input pixel is located
+    for deg in range(1,diffusion_degree+1):
+
+        # if pixel is in current degree of neighbourhood
         if xx == deg or yy == deg:
 
-            # calculate the amount of pixels in vicinity of degree 'deg'
-            neigh_deg = 8*(2**deg-1)
+            # calculate the amount of pixels in this neighbourhood degree
+            neigh_deg = 8 * (2 ** deg - 1)
 
-            # calculate percentage of total diff to diffisue into this vicinity
-            diff_amount = (diff * (0.5/deg))/neigh_deg
-
-            # stop if you found out in which vicinity the pixels lie
-
+            # calculate the amount of energy to be diffused
+            diff_amount = (diff * (0.5 / deg)) / neigh_deg
             return diff_amount
+
+        else:
+            pass
 
 
 #---------------------------------------------------------

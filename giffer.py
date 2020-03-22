@@ -22,8 +22,8 @@ images = []
 print("saving...")
 for raster in sorted:
     images.append(imageio.imread(raster))
-    imageio.mimsave("gifs/convection.gif", images, duration=0.2)
-    print("...")
+    imageio.mimsave("gifs/diffusion.gif", images, duration=0.1)
+    print("saving {}...".format(raster[24:-4]))
 
 
 print("done, gif saved")

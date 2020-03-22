@@ -295,8 +295,6 @@ def diffusion(in_raster, resX, resY, diffusion_index, container_temp, loss_over_
 
                 x -= 1
 
-
-
         y+=1
 
     # unpad the raster to regain its beauty [ymin,ymax][xmin,xmax]
@@ -353,10 +351,8 @@ def decider_diffusion_temp(in_raster, temporary_raster, x, y, diffusion_index, d
             if diff < 0 and temporary_raster[x, y] < 0:
                 temporary_raster[neigh[0], neigh[1]] += neigh[2]
 
-
             else:
                 temporary_raster[neigh[0], neigh[1]] -= neigh[2]
-
 
         except:
             #print("whoops")
@@ -368,8 +364,6 @@ def decider_diffusion_temp(in_raster, temporary_raster, x, y, diffusion_index, d
         in_raster[x,y] += diff
     else:
         in_raster[x,y] -= diff
-
-
 
     return temporary_raster
 
@@ -422,7 +416,6 @@ def diff_amount(x,y,diff,diffusion_degree):
     xx = abs(x)
     yy = abs(y)
 
-
     # check in which degree of neighbourhood input pixel is located
     for deg in range(1,diffusion_degree+1):
 
@@ -434,11 +427,11 @@ def diff_amount(x,y,diff,diffusion_degree):
 
             # calculate the amount of energy to be diffused
             diff_amount = (diff * (0.5 / deg)) / neigh_deg
+
             return diff_amount
 
         else:
             pass
-
 
 #---------------------------------------------------------
 #                       GIF CONVERSION
